@@ -1,0 +1,46 @@
+{
+  "appName": "AirAware",
+  "tagline": "Una aplicación de caminatas para padres de NYC, consciente del asma.",
+  "addressFrom": "¿Desde dónde?",
+  "addressTo": "¿Hasta dónde?",
+  "findRoute": "Buscar ruta",
+  "kids": {
+    "title": "Tus niños",
+    "add": "Agregar niño",
+    "name": "Nombre",
+    "age": "Edad",
+    "severity": "Gravedad del asma",
+    "severityMild": "Leve",
+    "severityModerate": "Moderada",
+    "severitySevere": "Severa"
+  },
+  "panel": {
+    "details": "Detalles",
+    "exposureMinutes": "Minutos en aire poco saludable",
+    "distance": "Distancia",
+    "walkTime": "Tiempo a pie",
+    "addedTime": "Tiempo extra vs ruta estándar",
+    "steps": "Pasos",
+    "standardRoute": "Ruta estándar",
+    "atlasRoute": "Ruta AirAware"
+  },
+  "blockContext": {
+    "headline": "Tu cuadra",
+    "comparison": "{factor}× el promedio de {region}",
+    "source": "Fuente: NYC DOHMH (visitas pediátricas a urgencias por asma, por ZCTA)"
+  },
+  "scrubber": {
+    "label": "¿A qué hora?",
+    "now": "Ahora",
+    "noon": "Mediodía",
+    "afternoon": "4 PM",
+    "evening": "6 PM",
+    "tomorrow": "Mañana AM"
+  },
+  "stayInside": {
+    "headline": "Quédense en casa hoy",
+    "advice": "Enciendan el filtro de aire. Mantengan las ventanas cerradas."
+  },
+  "languageToggle": "Idioma",
+  "outsideNyc": "Actualmente cubrimos los 5 distritos de NYC. Prueba una de estas caminatas del Bronx:"
+}

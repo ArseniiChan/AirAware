@@ -1,0 +1,46 @@
+{
+  "appName": "AirAware",
+  "tagline": "An asthma-aware walking app for NYC parents.",
+  "addressFrom": "Where from?",
+  "addressTo": "Where to?",
+  "findRoute": "Find route",
+  "kids": {
+    "title": "Your kids",
+    "add": "Add kid",
+    "name": "Name",
+    "age": "Age",
+    "severity": "Asthma severity",
+    "severityMild": "Mild",
+    "severityModerate": "Moderate",
+    "severitySevere": "Severe"
+  },
+  "panel": {
+    "details": "Details",
+    "exposureMinutes": "Minutes through unhealthy air",
+    "distance": "Distance",
+    "walkTime": "Walk time",
+    "addedTime": "Added time vs standard",
+    "steps": "Steps",
+    "standardRoute": "Standard route",
+    "atlasRoute": "AirAware route"
+  },
+  "blockContext": {
+    "headline": "Your block",
+    "comparison": "{factor}× the {region} average",
+    "source": "Source: NYC DOHMH (asthma ED visits, ages 0–17, by ZCTA)"
+  },
+  "scrubber": {
+    "label": "What time?",
+    "now": "Now",
+    "noon": "Noon",
+    "afternoon": "4 PM",
+    "evening": "6 PM",
+    "tomorrow": "Tomorrow AM"
+  },
+  "stayInside": {
+    "headline": "Stay home today",
+    "advice": "Run the air filter. Keep windows shut."
+  },
+  "languageToggle": "Language",
+  "outsideNyc": "We currently cover the 5 boroughs of NYC. Try one of these Bronx walks:"
+}
