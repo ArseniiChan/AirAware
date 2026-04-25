@@ -82,65 +82,74 @@ export function HeatmapLayer() {
 
   if (!data) return null;
 
-  // Two layers:
+  // Strategy:
   //
-  //  1. Heatmap (low zoom only). At city-wide zoom (10-12) we want the user
-  //     to see the broad pollution gradient: Bronx/Hunts Point hot, outer
-  //     boroughs cooler. The Gaussian-smoothed heatmap reads cleanly here.
+  //  1. Heatmap (zoom < 12): only the WORST cells contribute. weight = 0
+  //     below AQI 70 so clean areas stay transparent. Small radius keeps
+  //     hot spots distinct rather than smearing into a uniform tint.
   //
-  //  2. Discrete cells (mid + high zoom). The moment the user zooms in to
-  //     pick a route — typically zoom 12+ — they want to see block-by-block
-  //     variation: the bus depot block, the highway curb, the side street.
-  //     Circles sized to roughly cover their 200m cell footprint give that.
+  //  2. Polygon fills (zoom >= 11): each cell rendered as its actual 200m
+  //     square. Opacity is driven BY AQI itself (not just zoom) — polluted
+  //     cells are loud, clean cells fade into the basemap. This is what
+  //     gives the map clear hot vs clean contrast.
   //
-  //  Crossfade at zoom 12 → 13 so neither layer is doing both jobs.
+  //  No outlines — they read as grid lines and obscure the data.
   return (
     <Source id="aqi-heatmap" type="geojson" data={data} buffer={32}>
       <Layer
         id="aqi-heatmap-layer"
         type="heatmap"
         slot="bottom"
-        maxzoom={13}
+        maxzoom={12}
         paint={{
+          // Only sensitive+ cells (AQI >= 70) contribute meaningfully. Below
+          // that, weight = 0, so clean areas don't smear orange into reds.
           'heatmap-weight': [
             'interpolate', ['linear'], ['get', 'aqi'],
-            50, 0,
-            100, 0.4,
-            150, 0.7,
+            70,  0,
+            90,  0.25,
+            120, 0.55,
+            160, 0.85,
             200, 1.0,
           ],
           'heatmap-intensity': [
             'interpolate', ['linear'], ['zoom'],
-            10, 0.9,
+            9,  0.8,
+            11, 1.1,
             12, 1.4,
           ],
+          // Sharper transition: small density already shows orange; high
+          // density saturates to deep red. Less Gaussian middle-ground.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
-            0,    'rgba(34,197,94,0)',
-            0.15, 'rgba(132,204,22,0.18)',
-            0.35, 'rgba(250,204,21,0.32)', // moderate
-            0.55, 'rgba(249,115,22,0.45)', // sensitive
-            0.75, 'rgba(220,38,38,0.55)',  // unhealthy
-            1.0,  'rgba(127,29,29,0.62)',  // hazardous
+            0,    'rgba(0,0,0,0)',
+            0.10, 'rgba(250,204,21,0)',
+            0.20, 'rgba(250,204,21,0.40)', // moderate
+            0.45, 'rgba(249,115,22,0.65)', // sensitive
+            0.70, 'rgba(220,38,38,0.78)',  // unhealthy
+            1.0,  'rgba(127,29,29,0.88)',  // hazardous
           ],
+          // Smaller radius keeps hot spots distinct rather than uniform
+          // citywide tint at low zoom.
           'heatmap-radius': [
             'interpolate', ['linear'], ['zoom'],
-            10, 14,
-            12, 22,
+            9,  6,
+            10, 9,
+            11, 13,
+            12, 18,
           ],
           'heatmap-opacity': [
             'interpolate', ['linear'], ['zoom'],
-            10, 0.7,
-            11, 0.65,
-            12, 0.5,
-            13, 0,
+            9,  0.85,
+            11, 0.8,
+            12, 0,
           ],
         }}
       />
-      {/* Block-level squares take over from zoom 11 onward. Each grid cell
-       *  is rendered as its actual 200m × 200m polygon — true block-shaped
-       *  fills, not Gaussian-smoothed circles. A thin outline at high zoom
-       *  separates adjacent cells visually. */}
+      {/* Block-level squares from zoom 11 onward. Opacity driven by AQI value
+       *  itself: clean cells (≤AQI50) stay near-invisible at 0.10, dirty
+       *  cells (≥AQI150) ramp to 0.85. This is what gives the map clear
+       *  hot vs cold contrast — the eye reads opacity as severity. */}
       <Layer
         id="aqi-cells-fill"
         type="fill"
@@ -156,30 +165,19 @@ export function HeatmapLayer() {
            200,   '#7f1d1d', // very unhealthy
           ],
           'fill-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            11, 0,
-            12, 0.35,
-            13, 0.55,
-            14, 0.6,
-            16, 0.55,
+            '*',
+            // Zoom factor: fade-in 11→13, full from 13.
+            ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 0.6, 13, 1, 16, 1],
+            // AQI factor: clean cells faint, dirty cells loud.
+            ['interpolate', ['linear'], ['get', 'aqi'],
+              0,   0.08,
+              50,  0.20,
+              100, 0.55,
+              150, 0.78,
+              200, 0.88,
+            ],
           ],
-          'fill-antialias': true,
-        }}
-      />
-      <Layer
-        id="aqi-cells-outline"
-        type="line"
-        slot="bottom"
-        minzoom={14}
-        paint={{
-          'line-color': '#0f172a',
-          'line-width': 0.5,
-          'line-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            14, 0,
-            15, 0.18,
-            17, 0.30,
-          ],
+          'fill-antialias': false,
         }}
       />
     </Source>
