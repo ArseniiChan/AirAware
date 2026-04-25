@@ -8,89 +8,135 @@ import { MultiKidPanel } from '@/components/MultiKidPanel';
 import { TimeScrubber, type TimeSlice } from '@/components/TimeScrubber';
 import { StayInsideOverlay } from '@/components/StayInsideOverlay';
 import { BlockContextCard } from '@/components/BlockContextCard';
+import { OnboardingStep } from '@/components/OnboardingStep';
+import { ComputingScreen } from '@/components/ComputingScreen';
+import { LandingPage } from '@/components/LandingPage';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
+
+type Step = 'landing' | 'from' | 'to' | 'computing' | 'results';
+
+const HERO_FROM = 'Hunts Point Ave & Bruckner Blvd, Bronx, NY';
+const HERO_TO = 'PS 48 — 1290 Spofford Ave, Bronx, NY';
 
 export default function HomePage() {
   const t = useTranslations();
+  const [step, setStep] = useState<Step>('landing');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [routeRequested, setRouteRequested] = useState(false);
   const [timeSlice, setTimeSlice] = useState<TimeSlice>('now');
   const [overlayDismissed, setOverlayDismissed] = useState(false);
 
-  const routes = routeRequested ? HERO_ROUTES_BY_TIME[timeSlice] : null;
+  const routes = step === 'results' ? HERO_ROUTES_BY_TIME[timeSlice] : null;
 
-  function loadHeroPair() {
-    setFrom('Hunts Point Ave & Bruckner Blvd, Bronx, NY');
-    setTo('PS 48 — 1290 Spofford Ave, Bronx, NY');
-    setRouteRequested(true);
+  function reset() {
+    setStep('landing');
+    setFrom('');
+    setTo('');
     setOverlayDismissed(false);
+    setTimeSlice('now');
   }
 
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!from.trim() || !to.trim()) return;
-    setRouteRequested(true);
-    setOverlayDismissed(false);
+  if (step === 'landing') {
+    return <LandingPage onStart={() => setStep('from')} />;
+  }
+
+  if (step === 'from') {
+    return (
+      <OnboardingStep
+        step={1}
+        totalSteps={2}
+        eyebrow="AirAware"
+        question="Where are you walking from?"
+        helper="Your home, your block, your stoop. We'll start there."
+        value={from}
+        onChange={setFrom}
+        placeholder="123 Hunts Point Ave, Bronx"
+        ctaLabel="Next"
+        onSubmit={() => setStep('to')}
+        presets={[{ label: 'Demo: Hunts Point Ave', value: HERO_FROM }]}
+      />
+    );
+  }
+
+  if (step === 'to') {
+    return (
+      <OnboardingStep
+        step={2}
+        totalSteps={2}
+        eyebrow="Destination"
+        question="Where are you walking to?"
+        helper="School, the park, the bodega. Anywhere."
+        value={to}
+        onChange={setTo}
+        placeholder="PS 48 — 1290 Spofford Ave, Bronx"
+        ctaLabel="Find clean route"
+        onSubmit={() => {
+          setOverlayDismissed(false);
+          setStep('computing');
+        }}
+        onBack={() => setStep('from')}
+        presets={[{ label: 'Demo: PS 48', value: HERO_TO }]}
+      />
+    );
+  }
+
+  if (step === 'computing') {
+    return <ComputingScreen onDone={() => setStep('results')} />;
   }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-4 px-4 py-4">
       <header className="flex items-center justify-between">
-        <div>
+        <button
+          type="button"
+          onClick={reset}
+          className="text-left transition hover:opacity-70"
+          aria-label="Start over"
+        >
           <h1 className="text-xl font-bold tracking-tight">{t('appName')}</h1>
-          <p className="text-xs text-gray-500">{t('tagline')}</p>
-        </div>
+          <p className="text-xs text-gray-500">
+            {from.split(',')[0]} → {to.split(',')[0]}
+          </p>
+        </button>
         <LanguageToggle />
       </header>
 
-      <section aria-label="Map placeholder" className="relative h-56 overflow-hidden rounded-lg border border-gray-200 bg-gradient-to-br from-emerald-100 via-yellow-100 to-red-200">
-        <p className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-700">
+      <section
+        aria-label="Map placeholder"
+        className="relative h-56 overflow-hidden rounded-lg border border-gray-200 bg-gradient-to-br from-emerald-100 via-yellow-100 to-red-200"
+        style={{ animation: 'air-fade 0.6s ease-out both' }}
+      >
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-700">
           Map placeholder — Person B wires Mapbox here
-        </p>
+        </div>
       </section>
 
-      <form onSubmit={handleSubmit} className="grid gap-2 sm:grid-cols-2">
-        <input
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          placeholder={t('addressFrom')}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm"
-        />
-        <input
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          placeholder={t('addressTo')}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm"
-        />
-        <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
-          <button
-            type="submit"
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800"
-          >
-            {t('findRoute')}
-          </button>
-          <button
-            type="button"
-            onClick={loadHeroPair}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Demo · Hunts Point → PS 48
-          </button>
-        </div>
-      </form>
+      <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
+        <BlockContextCard />
+      </div>
 
-      {routeRequested && <BlockContextCard />}
+      <div style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}>
+        <KidProfilePicker />
+      </div>
 
-      <KidProfilePicker />
+      <div style={{ animation: 'air-fade 0.6s ease-out 0.3s both' }}>
+        <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
+      </div>
 
-      {routeRequested && <TimeScrubber value={timeSlice} onChange={setTimeSlice} />}
-
-      <MultiKidPanel routes={routes} />
+      <div style={{ animation: 'air-fade 0.6s ease-out 0.4s both' }}>
+        <MultiKidPanel routes={routes} />
+      </div>
 
       {!overlayDismissed && (
         <StayInsideOverlay routes={routes} onDismiss={() => setOverlayDismissed(true)} />
       )}
+
+      <style jsx>{`
+        @keyframes air-fade {
+          from { transform: translateY(12px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
     </main>
   );
 }
