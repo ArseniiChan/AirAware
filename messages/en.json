@@ -47,21 +47,15 @@
   "languageToggle": "Language",
   "outsideNyc": "We currently cover the 5 boroughs of NYC. Try one of these Bronx walks:",
   "landing": {
-    "eyebrow": "Asthma-aware navigation",
-    "place": "New York City · 5 boroughs",
-    "headlineLead": "Same walk.",
-    "headlineMid": "Two kids.",
-    "headlineEnd": "Different answers.",
-    "lede": "Like a maps app — but it knows the air, the block, and the kid. Built for parents who walk the Bronx every morning.",
-    "cta": "Begin",
-    "ctaHint": "No login. Two addresses. Built for the Bronx, works across NYC.",
+    "eyebrow": "Asthma-aware navigation · NYC",
+    "tagline": "Like Google Maps — but it knows your kid has asthma.",
+    "cta": "Get Started",
+    "ctaHint": "No login. Type two addresses. Built for the Bronx, works across NYC.",
     "feature1Title": "Cleaner routes",
-    "feature1Body": "We score every alternative by the pollution along it, and pick the one that breathes easier.",
+    "feature1Body": "We re-route around the worst pollution block by block.",
     "feature2Title": "Per-kid guidance",
-    "feature2Body": "Maya walks today. Diego stays inside. The thresholds are personal, not a public dashboard.",
+    "feature2Body": "Maya walks today. Aiden stays inside. The thresholds are personal.",
     "feature3Title": "Forecast-aware",
-    "feature3Body": "Bad air now? Drag the time forward. We'll tell you when the bus depot quiets down.",
-    "footnoteData": "Data: EPA AirNow, Open-Meteo, NYC DOHMH (asthma ED visits, by ZCTA).",
-    "footnoteCoords": "40.84°N · 73.91°W"
+    "feature3Body": "Bad now? See when the air clears. Walk at four instead."
   }
 }

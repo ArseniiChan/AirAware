@@ -2,226 +2,130 @@
 
 import { useTranslations } from 'next-intl';
 import { LanguageToggle } from './LanguageToggle';
-import { RouteIcon } from './icons/RouteIcon';
-import { KidsIcon } from './icons/KidsIcon';
-import { ForecastIcon } from './icons/ForecastIcon';
-import { TopoBackground } from './icons/TopoBackground';
 
 interface Props {
   onStart: () => void;
 }
 
+const FEATURE_EMOJIS = ['🟢', '👧', '⏱'] as const;
+
+// Decorative floating dots — pure aesthetic, no semantic meaning.
+const FLOAT_DOTS = [
+  { left: '8%',  top: '12%', size: 14, color: 'bg-emerald-300/60', delay: '0s'   },
+  { left: '14%', top: '78%', size: 22, color: 'bg-sky-300/50',     delay: '1.2s' },
+  { left: '22%', top: '38%', size: 8,  color: 'bg-emerald-400/50', delay: '0.6s' },
+  { left: '76%', top: '22%', size: 18, color: 'bg-emerald-200/70', delay: '0.3s' },
+  { left: '88%', top: '64%', size: 12, color: 'bg-sky-200/70',     delay: '1.8s' },
+  { left: '64%', top: '84%', size: 24, color: 'bg-emerald-300/40', delay: '0.9s' },
+  { left: '40%', top: '8%',  size: 10, color: 'bg-sky-300/60',     delay: '1.5s' },
+  { left: '92%', top: '38%', size: 6,  color: 'bg-emerald-400/60', delay: '2.1s' },
+];
+
 export function LandingPage({ onStart }: Props) {
   const t = useTranslations('landing');
-
   const features = [
-    { Icon: RouteIcon,    title: t('feature1Title'), body: t('feature1Body'), n: '01' },
-    { Icon: KidsIcon,     title: t('feature2Title'), body: t('feature2Body'), n: '02' },
-    { Icon: ForecastIcon, title: t('feature3Title'), body: t('feature3Body'), n: '03' },
+    { emoji: FEATURE_EMOJIS[0], title: t('feature1Title'), body: t('feature1Body') },
+    { emoji: FEATURE_EMOJIS[1], title: t('feature2Title'), body: t('feature2Body') },
+    { emoji: FEATURE_EMOJIS[2], title: t('feature3Title'), body: t('feature3Body') },
   ];
-
   return (
-    <div
-      className="paper-grain relative min-h-screen overflow-hidden"
-      style={{ background: 'rgb(var(--paper))', color: 'rgb(var(--ink))' }}
-    >
-      {/* Topographic background */}
-      <TopoBackground />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-emerald-50 to-sky-50">
+      {/* Decorative floating dots */}
+      {FLOAT_DOTS.map((d, i) => (
+        <span
+          key={i}
+          className={`pointer-events-none absolute rounded-full blur-[1px] ${d.color}`}
+          style={{
+            left: d.left,
+            top: d.top,
+            width: d.size,
+            height: d.size,
+            animation: `air-drift 6s ease-in-out ${d.delay} infinite alternate`,
+          }}
+        />
+      ))}
 
-      {/* Top bar — like the running head of a printed page */}
-      <header className="relative z-10 mx-auto flex max-w-6xl items-baseline justify-between gap-4 px-6 pt-7 sm:px-10">
-        <div className="flex items-baseline gap-3">
-          <span
-            className="text-xl font-semibold tracking-tight sm:text-[22px]"
-            style={{ fontFamily: 'var(--font-display)', fontVariationSettings: '"opsz" 144, "SOFT" 60' }}
-          >
+      {/* Soft radial glow behind the hero */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-60"
+        style={{
+          background: 'radial-gradient(closest-side, rgba(74,222,128,0.25), rgba(74,222,128,0) 70%)',
+        }}
+      />
+
+      {/* Top bar */}
+      <header className="relative z-10 flex items-center justify-between px-6 pt-6">
+        <div className="text-2xl font-extrabold tracking-tight">
+          <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
             AirAware
-          </span>
-          <span
-            className="hidden text-[10px] uppercase tracking-[0.22em] sm:inline"
-            style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--ink-soft))' }}
-          >
-            {t('place')}
           </span>
         </div>
         <LanguageToggle />
       </header>
 
-      {/* Thin rule under the masthead */}
-      <div
-        className="relative z-10 mx-auto mt-5 max-w-6xl px-6 sm:px-10"
-        aria-hidden
-      >
-        <div className="h-px w-full" style={{ background: 'rgb(var(--rule))' }} />
-      </div>
-
       {/* Hero */}
-      <main className="relative z-10 mx-auto max-w-6xl px-6 sm:px-10">
-        <div className="grid grid-cols-12 gap-6 pt-12 sm:pt-20">
-          {/* Eyebrow / coordinates column */}
-          <aside
-            className="col-span-12 sm:col-span-3"
-            style={{ animation: 'ink-rise 0.7s ease-out 0.05s both' }}
-          >
-            <p
-              className="text-[10px] uppercase leading-relaxed tracking-[0.28em]"
-              style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--ink-soft))' }}
-            >
-              {t('eyebrow')}
-            </p>
-            <p
-              className="mt-2 text-[10px] uppercase tracking-[0.22em]"
-              style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--ember))' }}
-            >
-              {t('footnoteCoords')}
-            </p>
-          </aside>
-
-          {/* Headline column */}
-          <div
-            className="col-span-12 sm:col-span-9"
-            style={{ animation: 'ink-rise 0.7s ease-out 0.15s both' }}
-          >
-            <h1
-              className="font-medium tracking-[-0.02em]"
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontVariationSettings: '"opsz" 144, "SOFT" 80',
-                fontSize: 'clamp(2.6rem, 7vw, 5.6rem)',
-                lineHeight: 0.96,
-                color: 'rgb(var(--ink))',
-              }}
-            >
-              <span className="block">{t('headlineLead')}</span>
-              <span className="block">{t('headlineMid')}</span>
-              <span
-                className="block italic"
-                style={{ color: 'rgb(var(--ember))', fontVariationSettings: '"opsz" 144, "SOFT" 100' }}
-              >
-                {t('headlineEnd')}
-              </span>
-            </h1>
-
-            <p
-              className="mt-8 max-w-xl text-[17px] leading-[1.55]"
-              style={{
-                color: 'rgb(var(--ink-soft))',
-                animation: 'ink-rise 0.7s ease-out 0.3s both',
-              }}
-            >
-              {t('lede')}
-            </p>
-
-            <div
-              className="mt-12 flex flex-wrap items-baseline gap-x-8 gap-y-4"
-              style={{ animation: 'ink-rise 0.7s ease-out 0.45s both' }}
-            >
-              <button
-                type="button"
-                onClick={onStart}
-                className="cta-underline group inline-flex items-baseline gap-3 text-[22px] font-medium"
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontVariationSettings: '"opsz" 144, "SOFT" 80',
-                  color: 'rgb(var(--ink))',
-                }}
-              >
-                <span>{t('cta')}</span>
-                <svg
-                  width="32"
-                  height="14"
-                  viewBox="0 0 32 14"
-                  className="transition-transform group-hover:translate-x-1"
-                  aria-hidden
-                >
-                  <path
-                    d="M0 7 L 28 7 M 22 1 L 30 7 L 22 13"
-                    stroke="rgb(var(--ember))"
-                    strokeWidth="1.4"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              <p
-                className="max-w-sm text-[12px] leading-relaxed"
-                style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--ink-soft))' }}
-              >
-                {t('ctaHint')}
-              </p>
-            </div>
-          </div>
+      <main className="relative z-10 mx-auto flex min-h-[calc(100vh-72px)] max-w-2xl flex-col items-center justify-center px-6 text-center">
+        <div style={{ animation: 'air-rise 0.6s ease-out both' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+            {t('eyebrow')}
+          </p>
+          <h1 className="mt-4 text-5xl font-bold tracking-tight text-slate-900 sm:text-7xl">
+            <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
+              AirAware
+            </span>
+          </h1>
+          <p className="mt-5 text-lg text-slate-600 sm:text-xl">
+            {t('tagline')}
+          </p>
         </div>
 
-        {/* Features — printed-page section list */}
-        <section
-          className="mt-24 grid grid-cols-12 gap-y-10 gap-x-6 pb-16 sm:mt-32"
-          style={{ animation: 'ink-rise 0.7s ease-out 0.6s both' }}
+        <button
+          type="button"
+          onClick={onStart}
+          className="group relative mt-12 inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-10 py-5 text-lg font-semibold text-white shadow-2xl shadow-emerald-400/40 transition hover:translate-y-[-2px] hover:bg-emerald-700"
+          style={{ animation: 'air-rise 0.6s ease-out 0.15s both' }}
         >
-          <header className="col-span-12">
-            <div className="flex items-baseline gap-4">
-              <span
-                className="text-[10px] uppercase tracking-[0.28em]"
-                style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--ink-soft))' }}
-              >
-                §
-              </span>
-              <span
-                className="h-px flex-1"
-                style={{ background: 'rgb(var(--rule))' }}
-                aria-hidden
-              />
-            </div>
-          </header>
+          {/* Pulsing ring */}
+          <span className="absolute inset-0 rounded-2xl border-2 border-emerald-400" style={{ animation: 'air-cta-pulse 2.4s ease-out infinite' }} />
+          <span className="relative">{t('cta')}</span>
+          <span className="relative ml-2 transition group-hover:translate-x-1">→</span>
+        </button>
 
-          {features.map(({ Icon, title, body, n }) => (
-            <article
-              key={n}
-              className="col-span-12 flex flex-col gap-3 sm:col-span-4"
+        <p className="mt-3 text-xs text-slate-400" style={{ animation: 'air-rise 0.6s ease-out 0.3s both' }}>
+          {t('ctaHint')}
+        </p>
+
+        <ul
+          className="mt-16 grid w-full grid-cols-1 gap-4 sm:grid-cols-3"
+          style={{ animation: 'air-rise 0.6s ease-out 0.45s both' }}
+        >
+          {features.map((f) => (
+            <li
+              key={f.title}
+              className="rounded-2xl border border-emerald-100 bg-white/70 p-4 text-left shadow-sm backdrop-blur"
             >
-              <div className="flex items-baseline justify-between">
-                <span
-                  className="text-[10px] uppercase tracking-[0.22em]"
-                  style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--ink-soft))' }}
-                >
-                  {n}
-                </span>
-                <Icon size={48} />
-              </div>
-              <h3
-                className="mt-2 text-[20px] font-medium tracking-tight"
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontVariationSettings: '"opsz" 36, "SOFT" 60',
-                }}
-              >
-                {title}
-              </h3>
-              <p
-                className="text-[14px] leading-[1.6]"
-                style={{ color: 'rgb(var(--ink-soft))' }}
-              >
-                {body}
-              </p>
-            </article>
+              <div className="text-xl" aria-hidden>{f.emoji}</div>
+              <h3 className="mt-2 text-sm font-semibold text-slate-900">{f.title}</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">{f.body}</p>
+            </li>
           ))}
-        </section>
-
-        {/* Footer line — like a colophon */}
-        <footer
-          className="relative pb-10"
-          style={{ animation: 'ink-rise 0.7s ease-out 0.75s both' }}
-        >
-          <div className="h-px w-full" style={{ background: 'rgb(var(--rule))' }} />
-          <p
-            className="mt-4 text-[11px] leading-relaxed"
-            style={{ fontFamily: 'var(--font-mono)', color: 'rgb(var(--ink-soft))' }}
-          >
-            {t('footnoteData')}
-          </p>
-        </footer>
+        </ul>
       </main>
+
+      <style jsx>{`
+        @keyframes air-rise {
+          from { transform: translateY(16px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+        @keyframes air-drift {
+          from { transform: translate(0, 0)     scale(1);   }
+          to   { transform: translate(8px, -14px) scale(1.15); }
+        }
+        @keyframes air-cta-pulse {
+          0%   { transform: scale(1);    opacity: 0.6; }
+          100% { transform: scale(1.18); opacity: 0;   }
+        }
+      `}</style>
     </div>
   );
 }
