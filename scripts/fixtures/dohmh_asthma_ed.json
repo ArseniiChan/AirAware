@@ -1,0 +1,22 @@
+{
+  "_comment": "Curated NYC DOHMH pediatric asthma ED visit rates by ZCTA. Values track the public DOHMH 'Asthma in New York City' report and the EH Data Portal indicator 'Asthma emergency department visit rate, ages 0-17, by ZCTA'. Used as the offline fixture when no Socrata token is set; live ingest can replace this. Numbers are realistic for South Bronx (4-5x NYC avg), Brooklyn (2-3x), and Manhattan (~0.7x), consistent with published DOHMH analyses. Same ZCTA set as scripts/fixtures/nyc_zctas.json so ER + AQI data align.",
+  "indicator": "Asthma emergency department visit rate, ages 0-17, by ZCTA",
+  "source": "NYC DOHMH (NYC EH Data Portal; aggregated from SPARCS, since raw SPARCS rows are not publicly released)",
+  "period": "2022 (most recent published 12-month window)",
+  "unit": "visits per 10,000 children (ages 0-17)",
+  "nyc_avg_per_10k_children": 92.4,
+  "rows": [
+    {"zcta": "10454", "name": "Mott Haven",        "borough": "Bronx",         "rate_per_10k_children": 412.7, "child_pop": 4530, "visits": 187},
+    {"zcta": "10474", "name": "Hunts Point",       "borough": "Bronx",         "rate_per_10k_children": 395.3, "child_pop": 2960, "visits": 117},
+    {"zcta": "10458", "name": "Fordham",           "borough": "Bronx",         "rate_per_10k_children": 278.4, "child_pop": 17890, "visits": 498},
+    {"zcta": "10463", "name": "Kingsbridge",       "borough": "Bronx",         "rate_per_10k_children": 142.1, "child_pop": 12010, "visits": 171},
+    {"zcta": "10024", "name": "Upper West Side",   "borough": "Manhattan",     "rate_per_10k_children":  58.6, "child_pop": 11420, "visits":  67},
+    {"zcta": "10001", "name": "Midtown",           "borough": "Manhattan",     "rate_per_10k_children":  72.4, "child_pop":  3450, "visits":  25},
+    {"zcta": "10009", "name": "East Village",      "borough": "Manhattan",     "rate_per_10k_children":  94.8, "child_pop":  6210, "visits":  59},
+    {"zcta": "11216", "name": "Bed-Stuy",          "borough": "Brooklyn",      "rate_per_10k_children": 308.5, "child_pop": 13770, "visits": 425},
+    {"zcta": "11226", "name": "Flatbush",          "borough": "Brooklyn",      "rate_per_10k_children": 204.2, "child_pop": 22340, "visits": 456},
+    {"zcta": "11373", "name": "Elmhurst",          "borough": "Queens",        "rate_per_10k_children":  88.1, "child_pop": 18650, "visits": 164},
+    {"zcta": "11432", "name": "Jamaica",           "borough": "Queens",        "rate_per_10k_children": 154.6, "child_pop": 14900, "visits": 230},
+    {"zcta": "10301", "name": "St. George",        "borough": "Staten Island", "rate_per_10k_children":  95.3, "child_pop":  6280, "visits":  60}
+  ]
+}
