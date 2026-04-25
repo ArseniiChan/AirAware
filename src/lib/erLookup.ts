@@ -42,18 +42,41 @@ const NYC_ZIP_REGEX = /\b1[01][0-9]{3}\b/;
 
 const HERO_ADDRESS_OVERRIDES: Record<string, string> = {
   // The Hunts Point Ave & Bruckner Blvd intersection sits on the 10454/10474
-  // border; the storyteller's stoop is on the Mott Haven (10454) side.
-  // Demo glue: the hero preset string maps to the pitch's ZCTA explicitly so
-  // the "1 in 24" beat lands even before Person B's geocoder is wired.
+  // border; the storyteller's stoop is on the Mott Haven (10454) side. The
+  // pitch beat "1 in 24 kids on your block" only lands for 10454 (10474 is
+  // "1 in 25"). Other consumers (page.tsx HERO_FROM_PICK.zcta, demo-routes.json
+  // pair.from.zcta) honestly label the address as 10474 because that's where
+  // Mapbox geocodes it; this override fires only inside the BlockContextCard
+  // resolution chain, so the data layer stays unmodified.
   'Hunts Point Ave & Bruckner Blvd, Bronx, NY': '10454',
 };
 
+function heroOverrideFor(address: string | undefined | null): string | null {
+  if (!address) return null;
+  return HERO_ADDRESS_OVERRIDES[address.trim()] ?? null;
+}
+
 export function extractZctaFromAddress(address: string | undefined | null): string | null {
   if (!address) return null;
-  const override = HERO_ADDRESS_OVERRIDES[address.trim()];
+  const override = heroOverrideFor(address);
   if (override) return override;
   const match = address.match(NYC_ZIP_REGEX);
   return match ? match[0] : null;
+}
+
+// Final resolution chain consumed by BlockContextCard. The hero-address
+// override wins over an explicit `zcta` input so a teammate plumbing
+// fromPick.zcta='10474' for the boundary intersection still lands the pitch.
+export function resolveZcta(
+  address: string | undefined | null,
+  explicitZcta: string | undefined | null,
+): string {
+  const heroOverride = heroOverrideFor(address);
+  if (heroOverride) return heroOverride;
+  if (explicitZcta) return explicitZcta;
+  const fromAddress = extractZctaFromAddress(address);
+  if (fromAddress) return fromAddress;
+  return HERO_DEFAULT_ZCTA;
 }
 
 export function lookupByZcta(zcta: string): ErZctaRow | null {

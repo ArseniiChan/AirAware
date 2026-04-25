@@ -33,6 +33,18 @@ const HERO_TO_PICK:   AddressPick = { name: HERO_TO,   lon: -73.88689, lat: 40.8
 // reasonable Bronx-default until we wire `zcta.geojson` point-in-polygon.
 const FALLBACK_ZCTA = '10474';
 
+// Backup Bronx pairs (Person A — plan §5). If a judge skips the hero or wants
+// to see another walk, these stay inside the AQI grid and exercise the live
+// /api/route engine. No baked picks — page lets Mapbox geocode on submit.
+const BACKUP_FROM_PRESETS = [
+  { label: 'Mott Haven home', value: 'E 138th St & Brook Ave, Bronx, NY 10454' },
+  { label: 'Hunts Point home', value: 'Lafayette Ave & Faile St, Bronx, NY 10474' },
+];
+const BACKUP_TO_PRESETS = [
+  { label: 'PS 30 (Mott Haven)', value: 'PS 30 — 510 E 141st St, Bronx, NY 10454' },
+  { label: 'PS 75 (Hunts Point)', value: 'PS 75 — 984 Faile St, Bronx, NY 10474' },
+];
+
 function isHeroPair(from: string, to: string): boolean {
   return from === HERO_FROM && to === HERO_TO;
 }
@@ -178,7 +190,10 @@ export default function HomePage() {
         placeholder="123 Hunts Point Ave, Bronx"
         ctaLabel="Next"
         onSubmit={() => setStep('to')}
-        presets={[{ label: 'Demo: Hunts Point Ave', value: HERO_FROM, pick: HERO_FROM_PICK }]}
+        presets={[
+          { label: 'Hero: Hunts Point Ave', value: HERO_FROM, pick: HERO_FROM_PICK },
+          ...BACKUP_FROM_PRESETS,
+        ]}
       />
     );
   }
@@ -204,7 +219,10 @@ export default function HomePage() {
           setStep('computing');
         }}
         onBack={() => setStep('from')}
-        presets={[{ label: 'Demo: PS 48', value: HERO_TO, pick: HERO_TO_PICK }]}
+        presets={[
+          { label: 'Hero: PS 48', value: HERO_TO, pick: HERO_TO_PICK },
+          ...BACKUP_TO_PRESETS,
+        ]}
       />
     );
   }

@@ -1,12 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import {
-  HERO_DEFAULT_ZCTA,
-  extractZctaFromAddress,
-  getNycAvgOneInN,
-  lookupByZcta,
-} from '@/lib/erLookup';
+import { getNycAvgOneInN, lookupByZcta, resolveZcta } from '@/lib/erLookup';
 
 interface BlockContextCardProps {
   // The "from" address as the user typed it or picked a preset. The card
@@ -21,7 +16,7 @@ interface BlockContextCardProps {
 export function BlockContextCard({ address, zcta }: BlockContextCardProps) {
   const t = useTranslations('blockContext');
 
-  const resolvedZcta = zcta ?? extractZctaFromAddress(address) ?? HERO_DEFAULT_ZCTA;
+  const resolvedZcta = resolveZcta(address, zcta);
   const row = lookupByZcta(resolvedZcta);
 
   // Three render paths:
