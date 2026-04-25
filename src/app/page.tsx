@@ -333,8 +333,6 @@ export default function HomePage() {
                   setFrom(p.name);
                   setFromPick(p);
                   setRouteError(null);
-                  rememberPick(p);
-                  setRecentPicks(loadRecentPicks());
                 }}
                 showCurrentLocation
                 placeholder="Start address"
