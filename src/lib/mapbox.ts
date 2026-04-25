@@ -2,13 +2,28 @@
 
 export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
-// Light basemap; per plan we don't ship a custom Studio style.
-export const MAP_STYLE = 'mapbox://styles/mapbox/light-v11';
+// Mapbox Standard (v3, 2024) — realistic 3D buildings, dynamic lighting via
+// `lightPreset` config property, automatic layer slotting. We pitch the
+// camera to show off the 3D building shells at city zoom levels.
+export const MAP_STYLE = 'mapbox://styles/mapbox/standard';
 
 // Bronx-anchored initial camera. Hunts Point sits near (-73.88, 40.81); we
 // pull back a click so the storyteller's school + home are both in view at z11.
 export const BRONX_CENTER = { longitude: -73.87, latitude: 40.84 } as const;
 export const INITIAL_ZOOM = 11;
+
+// Cinematic angle for the results screen. Buildings cast shadows toward the
+// viewer at this combo. -17° bearing rotates the grid slightly off-axis so
+// the routes don't fight the orthogonal NYC street pattern.
+export const RESULTS_PITCH = 50;
+export const RESULTS_BEARING = -17;
+
+// Standard's lightPreset controls sun position + sky tinting + window glow.
+// 'day' is the safest demo default; 'dusk' is more cinematic but tints
+// everything orange which fights our heatmap. We expose all four so a future
+// toggle can cycle them.
+export type LightPreset = 'dawn' | 'day' | 'dusk' | 'night';
+export const DEFAULT_LIGHT_PRESET: LightPreset = 'day';
 
 // 5-borough bounding box (W,S,E,N). Used to clamp the geocoder so judges
 // who type "Atlanta" get the friendly out-of-NYC fallback instead of a hit.

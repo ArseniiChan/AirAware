@@ -72,6 +72,7 @@ export function HeatmapLayer() {
       <Layer
         id="aqi-heatmap-layer"
         type="heatmap"
+        slot="bottom"
         // Fade out as we zoom in so individual cells take over.
         maxzoom={15}
         paint={{
@@ -114,6 +115,7 @@ export function HeatmapLayer() {
       <Layer
         id="aqi-cells-layer"
         type="circle"
+        slot="bottom"
         minzoom={13}
         paint={{
           'circle-radius': [

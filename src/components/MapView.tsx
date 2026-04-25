@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Map, { Layer, Marker, NavigationControl, Source, type MapRef } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import {
@@ -9,25 +9,45 @@ import {
   BRONX_CENTER,
   INITIAL_ZOOM,
   NYC_BBOX,
+  RESULTS_PITCH,
+  RESULTS_BEARING,
+  DEFAULT_LIGHT_PRESET,
+  type LightPreset,
 } from '@/lib/mapbox';
 import type { DemoRoutesPayload } from '@/lib/routesData';
 import { HeatmapLayer } from './HeatmapLayer';
 
 interface Props {
   /** When provided, renders the standard (red) and atlas (green) polylines and
-   *  fits the camera to their combined bounds. */
+   *  fits the camera to their combined bounds with a cinematic pitch. */
   routes?: DemoRoutesPayload | null;
-  /** Render the AQI heatmap behind everything. Off by default to keep the
-   *  pre-route map clean (judges only need to see air quality where the
-   *  routes are about to be drawn). */
+  /** Render the AQI heatmap behind buildings. Off by default. */
   showHeatmap?: boolean;
 }
 
 const STANDARD_RED = '#dc2626';
 const ATLAS_GREEN = '#16a34a';
 
+const LIGHT_CYCLE: LightPreset[] = ['dawn', 'day', 'dusk', 'night'];
+const LIGHT_LABEL: Record<LightPreset, string> = {
+  dawn: '🌅', day: '☀️', dusk: '🌆', night: '🌙',
+};
+
 export function MapView({ routes = null, showHeatmap = false }: Props) {
   const mapRef = useRef<MapRef | null>(null);
+  const [styleReady, setStyleReady] = useState(false);
+  const [lightPreset, setLightPreset] = useState<LightPreset>(DEFAULT_LIGHT_PRESET);
+
+  // Apply Standard's lightPreset config whenever the style is ready or the
+  // user cycles it. setConfigProperty is the v3 API for live theme switching.
+  useEffect(() => {
+    if (!styleReady || !mapRef.current) return;
+    try {
+      mapRef.current.getMap().setConfigProperty('basemap', 'lightPreset', lightPreset);
+    } catch {
+      // Older mapbox-gl versions may not expose setConfigProperty; degrade silently.
+    }
+  }, [styleReady, lightPreset]);
 
   const standardGeoJson = useMemo(() => {
     if (!routes) return null;
@@ -47,9 +67,11 @@ export function MapView({ routes = null, showHeatmap = false }: Props) {
     };
   }, [routes]);
 
-  // Auto-fit camera when routes appear.
+  // Fly the camera to route bounds with a cinematic pitch + bearing the moment
+  // routes appear. Easing the camera (instead of jump-fitting) is the single
+  // biggest "this feels like a real product" upgrade.
   useEffect(() => {
-    if (!routes || !mapRef.current) return;
+    if (!routes || !mapRef.current || !styleReady) return;
     const all = [
       ...routes.routes.standard.geometry.coordinates,
       ...routes.routes.atlas.geometry.coordinates,
@@ -63,11 +85,22 @@ export function MapView({ routes = null, showHeatmap = false }: Props) {
       if (lat < minLat) minLat = lat;
       if (lat > maxLat) maxLat = lat;
     }
-    mapRef.current.getMap().fitBounds(
+    const map = mapRef.current.getMap();
+    const camera = map.cameraForBounds(
       [[minLon, minLat], [maxLon, maxLat]],
-      { padding: 56, duration: 800, maxZoom: 16 },
+      { padding: 64, maxZoom: 16.5 },
     );
-  }, [routes]);
+    if (!camera || !camera.center) return;
+    map.flyTo({
+      center: camera.center,
+      zoom: typeof camera.zoom === 'number' ? camera.zoom : INITIAL_ZOOM,
+      pitch: RESULTS_PITCH,
+      bearing: RESULTS_BEARING,
+      duration: 1600,
+      essential: true,
+      curve: 1.4,
+    });
+  }, [routes, styleReady]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -78,92 +111,115 @@ export function MapView({ routes = null, showHeatmap = false }: Props) {
     );
   }
 
+  function cycleLight() {
+    const i = LIGHT_CYCLE.indexOf(lightPreset);
+    setLightPreset(LIGHT_CYCLE[(i + 1) % LIGHT_CYCLE.length]);
+  }
+
   return (
-    <Map
-      ref={mapRef}
-      mapboxAccessToken={MAPBOX_TOKEN}
-      mapStyle={MAP_STYLE}
-      initialViewState={{
-        longitude: BRONX_CENTER.longitude,
-        latitude: BRONX_CENTER.latitude,
-        zoom: INITIAL_ZOOM,
-      }}
-      maxBounds={NYC_BBOX}
-      style={{ width: '100%', height: '100%' }}
-      attributionControl={false}
-    >
-      <NavigationControl position="top-right" showCompass={false} />
+    <div className="relative h-full w-full">
+      <Map
+        ref={mapRef}
+        mapboxAccessToken={MAPBOX_TOKEN}
+        mapStyle={MAP_STYLE}
+        initialViewState={{
+          longitude: BRONX_CENTER.longitude,
+          latitude: BRONX_CENTER.latitude,
+          zoom: INITIAL_ZOOM,
+          pitch: 0,
+          bearing: 0,
+        }}
+        maxBounds={NYC_BBOX}
+        style={{ width: '100%', height: '100%' }}
+        attributionControl={false}
+        onLoad={() => setStyleReady(true)}
+        onStyleData={() => setStyleReady(true)}
+      >
+        <NavigationControl position="top-right" showCompass={false} />
 
-      {showHeatmap && <HeatmapLayer />}
+        {showHeatmap && <HeatmapLayer />}
 
-      {standardGeoJson && (
-        <Source id="route-standard" type="geojson" data={standardGeoJson}>
-          {/* White casing so the red pops on any basemap color */}
-          <Layer
-            id="route-standard-casing"
-            type="line"
-            paint={{
-              'line-color': '#ffffff',
-              'line-width': 9,
-              'line-opacity': 0.85,
-            }}
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-          />
-          <Layer
-            id="route-standard-line"
-            type="line"
-            paint={{
-              'line-color': STANDARD_RED,
-              'line-width': 5,
-              'line-opacity': 0.95,
-            }}
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-          />
-        </Source>
-      )}
-
-      {atlasGeoJson && (
-        <Source id="route-atlas" type="geojson" data={atlasGeoJson}>
-          <Layer
-            id="route-atlas-casing"
-            type="line"
-            paint={{
-              'line-color': '#ffffff',
-              'line-width': 9,
-              'line-opacity': 0.85,
-            }}
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-          />
-          <Layer
-            id="route-atlas-line"
-            type="line"
-            paint={{
-              'line-color': ATLAS_GREEN,
-              'line-width': 5,
-              'line-opacity': 0.95,
-              'line-dasharray': [1, 0], // solid; dashed reserved for "brief walk" later
-            }}
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-          />
-        </Source>
-      )}
-
-      {routes && (
-        <>
-          <Marker longitude={routes.pair.from.lon} latitude={routes.pair.from.lat} anchor="center">
-            <div
-              aria-label="Origin"
-              className="h-3.5 w-3.5 rounded-full border-2 border-white bg-slate-900 shadow"
+        {standardGeoJson && (
+          <Source id="route-standard" type="geojson" data={standardGeoJson}>
+            <Layer
+              id="route-standard-casing"
+              type="line"
+              slot="middle"
+              paint={{
+                'line-color': '#ffffff',
+                'line-width': 9,
+                'line-opacity': 0.85,
+              }}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             />
-          </Marker>
-          <Marker longitude={routes.pair.to.lon} latitude={routes.pair.to.lat} anchor="center">
-            <div
-              aria-label="Destination"
-              className="h-4 w-4 rounded-full border-2 border-white bg-emerald-600 shadow"
+            <Layer
+              id="route-standard-line"
+              type="line"
+              slot="middle"
+              paint={{
+                'line-color': STANDARD_RED,
+                'line-width': 5,
+                'line-opacity': 0.95,
+              }}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             />
-          </Marker>
-        </>
-      )}
-    </Map>
+          </Source>
+        )}
+
+        {atlasGeoJson && (
+          <Source id="route-atlas" type="geojson" data={atlasGeoJson}>
+            <Layer
+              id="route-atlas-casing"
+              type="line"
+              slot="middle"
+              paint={{
+                'line-color': '#ffffff',
+                'line-width': 9,
+                'line-opacity': 0.85,
+              }}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            />
+            <Layer
+              id="route-atlas-line"
+              type="line"
+              slot="middle"
+              paint={{
+                'line-color': ATLAS_GREEN,
+                'line-width': 5,
+                'line-opacity': 0.95,
+              }}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            />
+          </Source>
+        )}
+
+        {routes && (
+          <>
+            <Marker longitude={routes.pair.from.lon} latitude={routes.pair.from.lat} anchor="center">
+              <div
+                aria-label="Origin"
+                className="h-3.5 w-3.5 rounded-full border-2 border-white bg-slate-900 shadow-[0_4px_14px_rgba(0,0,0,0.4)]"
+              />
+            </Marker>
+            <Marker longitude={routes.pair.to.lon} latitude={routes.pair.to.lat} anchor="center">
+              <div
+                aria-label="Destination"
+                className="h-4 w-4 rounded-full border-2 border-white bg-emerald-600 shadow-[0_4px_14px_rgba(22,163,74,0.55)]"
+              />
+            </Marker>
+          </>
+        )}
+      </Map>
+
+      <button
+        type="button"
+        onClick={cycleLight}
+        className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur transition hover:bg-slate-900"
+        aria-label={`Lighting: ${lightPreset}. Tap to cycle.`}
+      >
+        <span aria-hidden>{LIGHT_LABEL[lightPreset]}</span>
+        <span className="capitalize">{lightPreset}</span>
+      </button>
+    </div>
   );
 }
