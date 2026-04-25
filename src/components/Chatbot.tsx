@@ -9,13 +9,14 @@ interface Message {
 
 const GREETING: Message = {
   role: 'model',
-  text: "Hi! I'm AirAware. Ask me anything about your kid's asthma, today's air, or this route.",
+  text: "Hi! I'm AirAware. Ask me anything about the app, the data, how routes are picked, or asthma + air quality.",
 };
 
 const SUGGESTIONS = [
+  'How do you pick the cleaner route?',
+  'What data do you use?',
   'Why is the bus depot bad?',
   'What does AQI mean?',
-  'Should my kid wear a mask?',
 ];
 
 export function Chatbot() {
@@ -97,7 +98,7 @@ export function Chatbot() {
           <header className="flex items-center justify-between gap-2 border-b border-emerald-100 bg-gradient-to-r from-emerald-600 to-sky-600 px-4 py-3 text-white">
             <div>
               <p className="text-sm font-semibold">Ask AirAware</p>
-              <p className="text-[11px] text-emerald-100">Asthma & air quality, in plain language</p>
+              <p className="text-[11px] text-emerald-100">Anything about the app, data, or air quality</p>
             </div>
             <button
               type="button"

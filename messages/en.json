@@ -47,15 +47,14 @@
   "languageToggle": "Language",
   "outsideNyc": "We currently cover the 5 boroughs of NYC. Try one of these Bronx walks:",
   "landing": {
-    "returning": "Returning?",
     "eyebrow": "Asthma-aware navigation · NYC",
     "tagline": "Like Google Maps — but it knows your kid has asthma.",
     "cta": "Get Started",
     "ctaHint": "No login. Type two addresses. Built for the Bronx, works across NYC.",
     "feature1Title": "Cleaner routes",
     "feature1Body": "We re-route around the worst pollution block by block.",
-    "feature2Title": "Per-kid guidance",
-    "feature2Body": "Maya walks today. Aiden stays inside. The thresholds are personal.",
+    "feature2Title": "Block-level pollution",
+    "feature2Body": "We map bus depots, highways, and industrial zones — so the route avoids them block by block.",
     "feature3Title": "Forecast-aware",
     "feature3Body": "Bad now? See when the air clears. Walk at four instead."
   }

@@ -9,6 +9,7 @@ import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
 import { AddressAutocomplete, type AddressPick } from '@/components/AddressAutocomplete';
 import { RouteSummaryCards } from '@/components/RouteSummaryCards';
+import { Scorecard } from '@/components/Scorecard';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
@@ -216,12 +217,7 @@ export default function HomePage() {
   }
 
   if (step === 'landing') {
-    return (
-      <LandingPage
-        onStart={() => setStep('from')}
-        onReturning={() => setStep('results')}
-      />
-    );
+    return <LandingPage onStart={() => setStep('from')} />;
   }
 
   if (step === 'from') {
@@ -404,6 +400,10 @@ export default function HomePage() {
 
         <div style={{ animation: 'air-fade 0.6s ease-out 0.05s both' }}>
           <RouteSummaryCards geo={geoRoutes} exposure={routes} warning={engineWarning} />
+        </div>
+
+        <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
+          <Scorecard />
         </div>
 
         {routeError && (

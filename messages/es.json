@@ -47,15 +47,14 @@
   "languageToggle": "Idioma",
   "outsideNyc": "Actualmente cubrimos los 5 distritos de NYC. Prueba una de estas caminatas del Bronx:",
   "landing": {
-    "returning": "¿Regresas?",
     "eyebrow": "Navegación con conciencia del asma · NYC",
     "tagline": "Como Google Maps — pero sabe que tu hijo tiene asma.",
     "cta": "Empezar",
     "ctaHint": "Sin cuenta. Escribe dos direcciones. Hecho para el Bronx, sirve en todo NYC.",
     "feature1Title": "Rutas más limpias",
     "feature1Body": "Cambiamos la ruta para evitar la peor contaminación, cuadra por cuadra.",
-    "feature2Title": "Guía por niño",
-    "feature2Body": "Maya camina hoy. Aiden se queda en casa. Los umbrales son personales.",
+    "feature2Title": "Contaminación a nivel de cuadra",
+    "feature2Body": "Mapeamos depósitos de autobuses, autopistas y zonas industriales — la ruta los evita cuadra por cuadra.",
     "feature3Title": "Atenta al pronóstico",
     "feature3Body": "¿Mal aire ahora? Mira cuándo se aclara. Camina a las cuatro."
   }

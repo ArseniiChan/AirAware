@@ -4,14 +4,16 @@
 // unhealthy air, and a small lifetime-impact estimate. Sits between the map
 // and the kid recommendation panel.
 
-import { useMemo, useState, type ComponentType, type SVGProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from 'react';
 import { useKidsStore } from '@/store/kids';
+import { useSavingsStore } from '@/store/savings';
 import {
   estimateSteps,
   formatDistance,
   formatWalkTime,
   lifeImpactForWalk,
 } from '@/lib/healthMath';
+import { walkSavings } from '@/lib/savings';
 import { ClockIcon, RulerIcon, StepsIcon } from '@/components/icons/Icons';
 import type { RouteOptions } from '@/lib/recommendation';
 import type { DemoRoutesPayload } from '@/lib/routesData';
@@ -51,6 +53,14 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
     [kids, activeKidId],
   );
   const [showImpact, setShowImpact] = useState(false);
+  const recordWalk = useSavingsStore((s) => s.recordWalk);
+  const [logged, setLogged] = useState(false);
+
+  // Reset the "logged" flag whenever the underlying route pair changes —
+  // each new computed route is its own opportunity to log a walk.
+  useEffect(() => {
+    setLogged(false);
+  }, [geo?.pair.id, exposure?.standard.avgAqi, exposure?.atlas.avgAqi]);
 
   if (!geo || !exposure) return null;
 
@@ -84,6 +94,8 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
   const allClean = std.exposure.exposureMinutes === 0 && atlas.exposure.exposureMinutes === 0;
 
   const warningText = warningCopy(warning);
+  const savings = walkSavings(exposure);
+  const canLog = savings.atlasWins && (savings.avoidedAqiMinutes > 0 || savings.avoidedUnhealthyMinutes > 0);
 
   return (
     <div className="space-y-2">
@@ -103,11 +115,43 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
       )}
 
       {!allClean && atlasCleaner && !warningText && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          <span className="font-semibold">
-            {activeKid ? `${activeKid.name}: ` : ''}AirAware route averages {Math.round(std.exposure.avgAqi - atlas.exposure.avgAqi)} AQI cleaner
-          </span>
-          {addedMin > 0 && <span className="text-emerald-700"> · +{addedMin} min walk</span>}
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="font-semibold">
+                AirAware route averages {Math.round(std.exposure.avgAqi - atlas.exposure.avgAqi)} AQI cleaner
+              </span>
+              {addedMin > 0 && <span className="text-emerald-700"> · +{addedMin} min walk</span>}
+              {canLog && (
+                <div className="mt-0.5 text-[12px] text-emerald-800">
+                  Take it and avoid{' '}
+                  <span className="font-semibold">
+                    {savings.avoidedAqiMinutes.toLocaleString()} AQI·min
+                  </span>
+                  {savings.avoidedUnhealthyMinutes > 0 && (
+                    <> ({savings.avoidedUnhealthyMinutes} bad-air min)</>
+                  )}{' '}
+                  of exposure today.
+                </div>
+              )}
+            </div>
+            {canLog && (
+              <button
+                type="button"
+                disabled={logged}
+                onClick={() => {
+                  recordWalk({
+                    aqiMinutes: savings.avoidedAqiMinutes,
+                    unhealthyMinutes: savings.avoidedUnhealthyMinutes,
+                  });
+                  setLogged(true);
+                }}
+                className="shrink-0 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-700 disabled:bg-emerald-300"
+              >
+                {logged ? '✓ Logged' : "I'm taking this route"}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

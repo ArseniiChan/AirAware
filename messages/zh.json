@@ -47,15 +47,14 @@
   "languageToggle": "语言",
   "outsideNyc": "我们目前覆盖纽约市五个区。请尝试以下布朗克斯的步行路线：",
   "landing": {
-    "returning": "再次访问?",
     "eyebrow": "懂哮喘的导航 · 纽约市",
     "tagline": "像谷歌地图,但它知道您的孩子有哮喘。",
     "cta": "开始",
     "ctaHint": "无需注册。输入两个地址即可。专为布朗克斯设计,适用于整个纽约市。",
     "feature1Title": "更干净的路线",
     "feature1Body": "我们逐街区绕开污染最严重的地方。",
-    "feature2Title": "因人而异的建议",
-    "feature2Body": "今天 Maya 可以走,Aiden 留在家里。这些阈值是个人的。",
+    "feature2Title": "街区级污染数据",
+    "feature2Body": "我们标记了公交车站、高速公路和工业区——路线会逐街区绕开它们。",
     "feature3Title": "结合预报",
     "feature3Body": "现在空气不好?看看什么时候清新。下午四点再走。"
   }
