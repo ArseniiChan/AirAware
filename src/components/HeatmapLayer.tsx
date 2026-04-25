@@ -32,19 +32,6 @@ interface AqiGridFile {
 const gridCache = new Map<string, GeoJSON.FeatureCollection>();
 const inflightCache = new Map<string, Promise<GeoJSON.FeatureCollection>>();
 
-/** Build a closed square ring around a cell center, sized to the grid spacing. */
-function cellPolygonRing(lon: number, lat: number, spacingM: number): number[][] {
-  const halfLat = spacingM / 2 / 111_320;
-  const halfLon = spacingM / 2 / (111_320 * Math.cos((lat * Math.PI) / 180));
-  return [
-    [lon - halfLon, lat - halfLat],
-    [lon + halfLon, lat - halfLat],
-    [lon + halfLon, lat + halfLat],
-    [lon - halfLon, lat + halfLat],
-    [lon - halfLon, lat - halfLat],
-  ];
-}
-
 async function loadGridGeoJson(url: string): Promise<GeoJSON.FeatureCollection> {
   const cached = gridCache.get(url);
   if (cached) return cached;
@@ -56,16 +43,15 @@ async function loadGridGeoJson(url: string): Promise<GeoJSON.FeatureCollection> 
         return r.json() as Promise<AqiGridFile>;
       })
       .then((g) => {
-        const spacing = g.spacing_m ?? 200;
+        // Point features (centroids) — the heatmap layer smooths between
+        // them via Gaussian kernels, so adjacent 200m cells blend instead
+        // of showing hard square edges.
         const fc: GeoJSON.FeatureCollection = {
           type: 'FeatureCollection',
           features: g.cells.map((c) => ({
             type: 'Feature',
             properties: { aqi: c.aqi },
-            geometry: {
-              type: 'Polygon',
-              coordinates: [cellPolygonRing(c.lon, c.lat, spacing)],
-            },
+            geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
           })),
         };
         gridCache.set(url, fc);
@@ -109,38 +95,64 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
 
   if (!data) return null;
 
-  // Restored to the visual state at commit 176755b (which was live at
-  // 16:44:53). Single polygon fill at all zooms, floor opacity 0.32 so
-  // the whole city is tinted, 8-stop amber→deep-red ramp.
+  // Heatmap layer with kernels sized so neighboring 200m cells blend
+  // smoothly instead of showing hard square edges. Every cell contributes
+  // (weight starts at AQI 0) so the whole city is tinted; clean cells just
+  // contribute a small amount, dirty cells contribute strongly.
   return (
     <Source id="aqi-heatmap" type="geojson" data={data} buffer={32}>
       <Layer
-        id="aqi-cells-fill"
-        type="fill"
+        id="aqi-heatmap-layer"
+        type="heatmap"
         slot="bottom"
         paint={{
-          'fill-color': [
+          // Every cell contributes — clean cells lightly, dirty cells loudly.
+          'heatmap-weight': [
             'interpolate', ['linear'], ['get', 'aqi'],
-             0,   '#fde68a',
-            40,   '#fcd34d',
-            70,   '#fbbf24',
-            95,   '#fb923c',
-           120,   '#f97316',
-           140,   '#ef4444',
-           165,   '#dc2626',
-           200,   '#7f1d1d',
+            0,   0.05,
+            40,  0.12,
+            70,  0.25,
+            95,  0.40,
+            120, 0.60,
+            140, 0.80,
+            180, 1.0,
           ],
-          'fill-opacity': [
-            'interpolate', ['linear'], ['get', 'aqi'],
-            0,    0.32,
-            40,   0.40,
-            70,   0.52,
-            95,   0.65,
-            120,  0.78,
-            140,  0.86,
-            180,  0.92,
+          // Intensity scales up with zoom so the same density of points
+          // doesn't wash out as cells become further apart on screen.
+          'heatmap-intensity': [
+            'interpolate', ['linear'], ['zoom'],
+            8,  0.6,
+            11, 1.0,
+            13, 1.6,
+            15, 2.4,
           ],
-          'fill-antialias': false,
+          // Color ramp — amber at low density through deep red at high.
+          // Start with a tiny non-zero alpha so even very low density has
+          // a soft tint (whole city colored, no transparent gaps).
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0,    'rgba(254, 230, 138, 0)',
+            0.05, 'rgba(254, 230, 138, 0.35)', // pale amber
+            0.20, 'rgba(252, 211, 77, 0.55)',  // soft yellow
+            0.35, 'rgba(251, 191, 36, 0.65)',  // gold
+            0.50, 'rgba(251, 146, 60, 0.75)',  // orange
+            0.65, 'rgba(249, 115, 22, 0.82)',  // dark orange
+            0.78, 'rgba(239, 68, 68, 0.88)',   // red
+            0.90, 'rgba(220, 38, 38, 0.92)',   // dark red
+            1.0,  'rgba(127, 29, 29, 0.94)',   // hazardous deep red
+          ],
+          // Radius needs to grow with zoom so kernels keep overlapping
+          // their neighbors as cells space out on screen.
+          'heatmap-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            8,  4,
+            10, 8,
+            12, 16,
+            14, 32,
+            16, 64,
+            18, 128,
+          ],
+          'heatmap-opacity': 0.85,
         }}
       />
     </Source>
