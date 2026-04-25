@@ -62,9 +62,15 @@ async function fetchDirections(coords: LonLat[], signal?: AbortSignal): Promise<
   if (hit) return hit;
 
   const path = coords.map(([lon, lat]) => `${lon},${lat}`).join(';');
+  // walkway_bias=1 strongly prefers dedicated pedestrian paths and avoids
+  // road-class infrastructure (tunnels, highways, ramps). Mapbox's default
+  // walking profile occasionally routes through pedestrian-prohibited
+  // tunnels in dense Manhattan blocks; this clamp prevents that.
+  // alley_bias=-0.3 mildly avoids alleys for kid safety.
   const url =
     `${MAPBOX_BASE}/${path}` +
     `?alternatives=false&geometries=geojson&overview=full&steps=false` +
+    `&walkway_bias=1&alley_bias=-0.3` +
     `&access_token=${MAPBOX_TOKEN}`;
 
   const promise = fetch(url, { signal }).then(async (res) => {

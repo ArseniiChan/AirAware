@@ -8,7 +8,13 @@ import type { RouteExposure } from './recommendation';
 type LonLat = [number, number];
 
 const SAMPLE_SPACING_M = 50; // dense enough for 200m AQI cells; cheap enough for 32 lookups/route
-const UNHEALTHY_AQI_THRESHOLD = 100; // EPA "Unhealthy for Sensitive Groups" floor
+// EPA's "Unhealthy for Sensitive Groups" threshold is 100, but pediatric
+// asthma symptoms often trigger at 75-85. AAFA + AAP guidance treats the
+// upper Moderate band as actionable for severe-persistent kids — we use 80
+// to surface meaningful differences in walks where the average is moderate.
+// This is only the "minutes counted as bad-air" threshold; the recommendation
+// engine still uses EPA-strict bands per kid severity.
+const UNHEALTHY_AQI_THRESHOLD = 80;
 
 function haversineM(a: LonLat, b: LonLat): number {
   const R = 6_371_000;

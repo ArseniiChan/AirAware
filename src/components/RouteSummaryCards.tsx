@@ -77,13 +77,31 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
     0,
     Math.round((atlas.duration_s - std.duration_s) / 60),
   );
+  // Both routes through clean air (AQI < threshold along the entire walk).
+  // Air-quality message in this case is "good news, pick either" — not a
+  // missing recommendation.
+  const allClean = std.exposure.exposureMinutes === 0 && atlas.exposure.exposureMinutes === 0;
 
   const warningText = warningCopy(warning);
 
   return (
     <div className="space-y-2">
-      {/* Headline savings — the "why bother" line, kid-named when one is active */}
-      {atlasCleaner && !warningText && (
+      {/* Headline — four states, in priority order:
+          1. Both routes clean → sky "air looks good" banner
+          2. AirAware genuinely cleaner (and engine isn't warning) → emerald "averages N AQI cleaner"
+          3. Engine warning → amber friendly explanation
+          (Otherwise no banner — just the route cards.) */}
+      {allClean && !warningText && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          <span className="font-semibold">Air looks good for this walk.</span>{' '}
+          <span className="text-sky-700">
+            Both routes are below the kid-asthma sensitivity threshold — pick whichever fits
+            the day.
+          </span>
+        </div>
+      )}
+
+      {!allClean && atlasCleaner && !warningText && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           <span className="font-semibold">
             {activeKid ? `${activeKid.name}: ` : ''}AirAware route averages {Math.round(std.exposure.avgAqi - atlas.exposure.avgAqi)} AQI cleaner
@@ -108,7 +126,7 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
         <RouteCard
           route={atlas}
           kid={activeKid}
-          highlight={atlasCleaner}
+          highlight={atlasCleaner && !allClean}
           showImpact={showImpact}
         />
       </div>
