@@ -2,7 +2,8 @@
 // Samples a route's geometry at fixed spacing, looks up AQI per sample, and
 // computes the four numbers `RouteExposure` requires.
 
-import { lookupAqi } from './aqiGrid';
+import { lookupAqiInterpolated } from './aqiGrid';
+import { pollutionPenalty } from './pollutionSources';
 import type { RouteExposure } from './recommendation';
 
 type LonLat = [number, number];
@@ -81,14 +82,22 @@ export async function scoreRoute(coords: LonLat[], durationS: number): Promise<S
   let worst: ScoredRoute['worstSample'] = null;
 
   for (const [lon, lat] of samples) {
-    const cell = await lookupAqi(lon, lat);
-    if (!cell) continue;
+    // Bilinear-interpolated grid AQI smooths the 200m cell boundaries so
+    // adjacent streets in the same cell still get slightly different values
+    // when the cell-corner gradient is non-zero.
+    const baseAqi = await lookupAqiInterpolated(lon, lat);
+    if (baseAqi == null) continue;
+    // Add Gaussian distance-decay penalties from hand-curated pollution
+    // sources (bus depots, highways, industrial zones). This is what makes
+    // a street one block off Bruckner score lower AQI than a street directly
+    // adjacent to it — the grid alone can't see that.
+    const adjusted = baseAqi + (await pollutionPenalty(lon, lat));
     cellsHit++;
-    sum += cell.aqi;
-    if (cell.aqi > max) max = cell.aqi;
-    if (cell.aqi >= UNHEALTHY_AQI_THRESHOLD) unhealthyMinutes += minutesPerSample;
-    if (!worst || cell.aqi > worst.aqi) {
-      worst = { lon, lat, aqi: cell.aqi };
+    sum += adjusted;
+    if (adjusted > max) max = adjusted;
+    if (adjusted >= UNHEALTHY_AQI_THRESHOLD) unhealthyMinutes += minutesPerSample;
+    if (!worst || adjusted > worst.aqi) {
+      worst = { lon, lat, aqi: adjusted };
     }
   }
 

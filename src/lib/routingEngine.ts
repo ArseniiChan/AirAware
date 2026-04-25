@@ -195,38 +195,38 @@ export async function planRoutes(
 
   // Ranking — read this carefully because it answers the user-facing
   // question "how do you pick the cleaner route":
-  //   1. Hard requirement: candidate must have FEWER `exposureMinutes` than
-  //      standard (i.e. less time spent in AQI ≥ 100). The previous version
-  //      ranked by `avgAqi`, which let a longer detour through uniformly
-  //      moderate AQI win even when its TOTAL bad-air minutes were higher.
-  //   2. Among candidates that beat standard on exposureMinutes, prefer the
-  //      one with the largest reduction.
-  //   3. Tie-break by lower avgAqi, then by lower sharedEdge (more visibly
-  //      different geometry on screen).
-  //   4. If NO candidate beats standard on exposureMinutes, fall back to the
-  //      best candidate by avgAqi but emit a warning so the UI can hide
-  //      misleading "saves N minutes" copy.
+  //   1. Primary metric: AVG AQI. This is per-step pollution concentration
+  //      and is the only fair comparison between routes of different lengths.
+  //      Total exposure-minutes scales with route length, so a longer route
+  //      through uniformly moderate air can have more "bad-air minutes" even
+  //      when the air per step is genuinely cleaner — that misleads users.
+  //   2. Tie-break by lower exposureMinutes (less time in AQI ≥ 100).
+  //   3. Final tie-break by lower sharedEdge (more visibly different geometry).
+  //   4. If NO candidate is meaningfully cleaner (avg AQI improvement < 2),
+  //      flag it so the UI can suppress misleading "saves N" copy.
   const diverging = candidates.filter((c) => c.sharedEdge < TWIN_THRESHOLD);
   const pool = diverging.length ? diverging : candidates;
 
-  const trulyCleaner = pool.filter((c) => c.cleanerByExposureMin > 0);
+  const meaningfulImprovement = (c: typeof pool[0]) => c.cleanerByAvgAqi >= 2;
+  const trulyCleaner = pool.filter(meaningfulImprovement);
   let best: typeof pool[0] | undefined;
   let warning: string | undefined;
 
   if (trulyCleaner.length > 0) {
     trulyCleaner.sort((a, b) => {
-      if (b.cleanerByExposureMin !== a.cleanerByExposureMin) {
-        return b.cleanerByExposureMin - a.cleanerByExposureMin;
-      }
       if (b.cleanerByAvgAqi !== a.cleanerByAvgAqi) {
         return b.cleanerByAvgAqi - a.cleanerByAvgAqi;
+      }
+      if (b.cleanerByExposureMin !== a.cleanerByExposureMin) {
+        return b.cleanerByExposureMin - a.cleanerByExposureMin;
       }
       return a.sharedEdge - b.sharedEdge;
     });
     best = trulyCleaner[0];
   } else {
-    // Nothing beats standard on bad-air minutes. Pick by avgAqi as a soft
-    // signal but flag it.
+    // Nothing meaningfully cleaner. Pick the best by avgAqi anyway so the
+    // map still shows an alternative, but flag for the UI to suppress
+    // "AirAware wins" copy.
     const fallback = [...pool].sort((a, b) => b.cleanerByAvgAqi - a.cleanerByAvgAqi)[0];
     best = fallback;
     warning = 'atlas not measurably cleaner than standard';

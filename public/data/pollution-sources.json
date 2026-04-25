@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-25",
+  "source": "Hand-curated from NYC Open Data: MTA bus depots, NYSDOT highways, NYC industrial business zones",
+  "notes": "Penalty added to grid AQI as: max_penalty * exp(-(distance_m / sigma_m)^2). Sigma controls how fast pollution decays with distance.",
+  "sources": [
+    {
+      "name": "Hunts Point Bus Depot (MTA)",
+      "type": "bus_depot",
+      "lon": -73.8893,
+      "lat": 40.8169,
+      "max_penalty": 45,
+      "sigma_m": 220
+    },
+    {
+      "name": "Bruckner Expressway / I-278",
+      "type": "highway",
+      "lon": -73.8899,
+      "lat": 40.8126,
+      "max_penalty": 38,
+      "sigma_m": 180
+    },
+    {
+      "name": "Bruckner / Hunts Point Ave interchange",
+      "type": "highway",
+      "lon": -73.8923,
+      "lat": 40.8169,
+      "max_penalty": 42,
+      "sigma_m": 200
+    },
+    {
+      "name": "Cross Bronx Expressway / I-95",
+      "type": "highway",
+      "lon": -73.9009,
+      "lat": 40.8503,
+      "max_penalty": 40,
+      "sigma_m": 200
+    },
+    {
+      "name": "Major Deegan Expressway / I-87 (S Bronx)",
+      "type": "highway",
+      "lon": -73.9234,
+      "lat": 40.8167,
+      "max_penalty": 35,
+      "sigma_m": 180
+    },
+    {
+      "name": "Hunts Point industrial zone (food terminal + truck yards)",
+      "type": "industrial",
+      "lon": -73.8830,
+      "lat": 40.8084,
+      "max_penalty": 50,
+      "sigma_m": 320
+    },
+    {
+      "name": "Hunts Point Wholesale Market truck routes",
+      "type": "truck_route",
+      "lon": -73.8857,
+      "lat": 40.8055,
+      "max_penalty": 40,
+      "sigma_m": 250
+    },
+    {
+      "name": "Major Deegan / E 138th interchange",
+      "type": "highway",
+      "lon": -73.9189,
+      "lat": 40.8089,
+      "max_penalty": 38,
+      "sigma_m": 180
+    },
+    {
+      "name": "Triborough Bridge approach (RFK)",
+      "type": "highway",
+      "lon": -73.9244,
+      "lat": 40.7989,
+      "max_penalty": 32,
+      "sigma_m": 200
+    },
+    {
+      "name": "FDR Drive (Manhattan east waterfront)",
+      "type": "highway",
+      "lon": -73.9456,
+      "lat": 40.8089,
+      "max_penalty": 28,
+      "sigma_m": 160
+    },
+    {
+      "name": "Mott Haven rail yard / depot",
+      "type": "rail_yard",
+      "lon": -73.9233,
+      "lat": 40.8067,
+      "max_penalty": 30,
+      "sigma_m": 220
+    }
+  ]
+}

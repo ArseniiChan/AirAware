@@ -122,3 +122,41 @@ export async function lookupAqi(lon: number, lat: number): Promise<AqiCell | nul
   }
   return best;
 }
+
+// Bilinear interpolation across the 4 surrounding cells. Smooths the jagged
+// 200m grid boundaries so adjacent streets that fall in the same cell still
+// get slightly different AQI values when the cell-corner gradient is non-zero.
+// Cheap to compute, doesn't add real signal — purely removes a stair-step
+// artifact.
+export async function lookupAqiInterpolated(
+  lon: number,
+  lat: number,
+): Promise<number | null> {
+  const g = await aqiGrid();
+  const [w, s, e, n] = g.bbox;
+  if (lon < w - g.lonStep || lon > e + g.lonStep || lat < s - g.latStep || lat > n + g.latStep) {
+    return null;
+  }
+  const latIdx0 = Math.floor(lat / g.latStep);
+  const lonIdx0 = Math.floor(lon / g.lonStep);
+  const corners = [
+    g.byBucket.get(bucketKey(latIdx0,     lonIdx0)),
+    g.byBucket.get(bucketKey(latIdx0,     lonIdx0 + 1)),
+    g.byBucket.get(bucketKey(latIdx0 + 1, lonIdx0)),
+    g.byBucket.get(bucketKey(latIdx0 + 1, lonIdx0 + 1)),
+  ];
+  // Inverse-distance weighting over whichever corners exist (handles holes).
+  let sum = 0, weight = 0;
+  for (const c of corners) {
+    if (!c) continue;
+    const d = haversineM([lon, lat], [c.lon, c.lat]);
+    const w = 1 / Math.max(1, d * d);
+    sum += c.aqi * w;
+    weight += w;
+  }
+  if (weight === 0) {
+    const fallback = await lookupAqi(lon, lat);
+    return fallback ? fallback.aqi : null;
+  }
+  return sum / weight;
+}

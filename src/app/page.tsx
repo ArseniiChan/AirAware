@@ -12,8 +12,6 @@ import { RouteSummaryCards } from '@/components/RouteSummaryCards';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
-import { loadWeather, captionForSlice } from '@/lib/weatherData';
-import { loadRecentPicks, rememberPick } from '@/lib/recentPicks';
 import { reverseGeocode, locateMe, GeolocateError } from '@/lib/geolocate';
 import type { RouteOptions } from '@/lib/recommendation';
 
@@ -33,18 +31,6 @@ const HERO_TO_PICK:   AddressPick = { name: HERO_TO,   lon: -73.88689, lat: 40.8
 // reasonable Bronx-default until we wire `zcta.geojson` point-in-polygon.
 const FALLBACK_ZCTA = '10474';
 
-// Backup Bronx pairs (Person A — plan §5). If a judge skips the hero or wants
-// to see another walk, these stay inside the AQI grid and exercise the live
-// /api/route engine. No baked picks — page lets Mapbox geocode on submit.
-const BACKUP_FROM_PRESETS = [
-  { label: 'Mott Haven home', value: 'E 138th St & Brook Ave, Bronx, NY 10454' },
-  { label: 'Hunts Point home', value: 'Lafayette Ave & Faile St, Bronx, NY 10474' },
-];
-const BACKUP_TO_PRESETS = [
-  { label: 'PS 30 (Mott Haven)', value: 'PS 30 — 510 E 141st St, Bronx, NY 10454' },
-  { label: 'PS 75 (Hunts Point)', value: 'PS 75 — 984 Faile St, Bronx, NY 10474' },
-];
-
 function isHeroPair(from: string, to: string): boolean {
   return from === HERO_FROM && to === HERO_TO;
 }
@@ -60,14 +46,7 @@ export default function HomePage() {
   const [liveBase, setLiveBase] = useState<RouteOptions | null>(null);
   const [engineWarning, setEngineWarning] = useState<string | null>(null);
   const [forecast, setForecast] = useState<AqiForecast | null>(null);
-  const [weather, setWeather] = useState<Awaited<ReturnType<typeof loadWeather>> | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
-  const [recentPicks, setRecentPicks] = useState<AddressPick[]>([]);
-
-  // Hydrate recent picks from localStorage on mount.
-  useEffect(() => {
-    setRecentPicks(loadRecentPicks());
-  }, []);
 
   const isHero = isHeroPair(from, to);
 
@@ -88,24 +67,15 @@ export default function HomePage() {
     return liveBase;
   }, [step, isHero, timeSlice, liveBase, forecast]);
 
-  // Load the forecast + weather once on mount so the scrubber is responsive
+  // Load the forecast once on mount so the scrubber is responsive
   // immediately when the user reaches results.
   useEffect(() => {
     let cancelled = false;
     loadForecast()
       .then((f) => { if (!cancelled) setForecast(f); })
       .catch((err) => { console.error('forecast load failed', err); });
-    loadWeather()
-      .then((w) => { if (!cancelled) setWeather(w); })
-      .catch((err) => { console.error('weather load failed', err); });
     return () => { cancelled = true; };
   }, []);
-
-  // Slice-aware caption ("44°F · 8 mph · Air clears as wind rises…").
-  const weatherCaption = useMemo(
-    () => (weather ? captionForSlice(weather, timeSlice) : null),
-    [weather, timeSlice],
-  );
 
   // On entering results, fetch route geometry. Hero pair → static fixture,
   // anything else → /api/route. Captures live exposure into `liveBase` so
@@ -206,7 +176,6 @@ export default function HomePage() {
       const dest = await reverseGeocode(lon, lat);
       setTo(dest.name);
       setToPick(dest);
-      rememberPick(dest);
       setRouteError(null);
     } catch {
       setRouteError('Couldn\'t look up that point. Try again or type a destination.');
@@ -219,7 +188,6 @@ export default function HomePage() {
         const me = await locateMe();
         setFrom(me.name);
         setFromPick(me);
-        rememberPick(me);
       } catch (err) {
         if (err instanceof GeolocateError && err.code === 'denied') {
           setRouteError('Pin dropped. Type your starting address — location permission was denied.');
@@ -230,8 +198,6 @@ export default function HomePage() {
         }
       }
     }
-
-    setRecentPicks(loadRecentPicks());
   }
 
   if (step === 'landing') {
@@ -256,18 +222,14 @@ export default function HomePage() {
         onPick={(p) => {
           setFrom(p.name);
           setFromPick(p);
-          rememberPick(p);
-          setRecentPicks(loadRecentPicks());
         }}
         pickedName={fromPick?.name}
         placeholder="123 Hunts Point Ave, Bronx"
         ctaLabel="Next"
         onSubmit={() => setStep('to')}
         showGeolocate
-        recentPicks={recentPicks}
         presets={[
           { label: 'Hero: Hunts Point Ave', value: HERO_FROM, pick: HERO_FROM_PICK },
-          ...BACKUP_FROM_PRESETS,
         ]}
       />
     );
@@ -286,11 +248,8 @@ export default function HomePage() {
         onPick={(p) => {
           setTo(p.name);
           setToPick(p);
-          rememberPick(p);
-          setRecentPicks(loadRecentPicks());
         }}
         pickedName={toPick?.name}
-        recentPicks={recentPicks}
         placeholder="PS 48 — 1290 Spofford Ave, Bronx"
         ctaLabel="Find clean route"
         onSubmit={() => {
@@ -301,7 +260,6 @@ export default function HomePage() {
         onBack={() => setStep('from')}
         presets={[
           { label: 'Hero: PS 48', value: HERO_TO, pick: HERO_TO_PICK },
-          ...BACKUP_TO_PRESETS,
         ]}
       />
     );
@@ -400,7 +358,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-3">
-            <TimeScrubber value={timeSlice} onChange={setTimeSlice} weather={weatherCaption} />
+            <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
           </div>
         </div>
 
