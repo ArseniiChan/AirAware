@@ -93,8 +93,12 @@ export default function HomePage() {
   // On entering results, fetch route geometry. Hero pair → static fixture,
   // anything else → /api/route. Captures live exposure into `liveBase` so
   // the scrubber can scale it per slice.
+  // Refetch whenever the input pair changes. Note: we deliberately do NOT
+  // null `geoRoutes` between fetches — unmounting <Source> while the
+  // mapbox style is mid-update crashes mapbox-gl v3 in `_updateTerrain`.
+  // Old routes stay drawn until the new ones replace them.
   useEffect(() => {
-    if (step !== 'results' || geoRoutes) return;
+    if (step !== 'results') return;
     let cancelled = false;
     setRouteError(null);
 
@@ -120,12 +124,10 @@ export default function HomePage() {
       })
       .then((engine) => {
         if (cancelled) return;
-        // Persist live exposure for the kid recommendations panel.
         setLiveBase({
           standard: engine.standard.exposure,
           atlas: engine.atlas.exposure,
         });
-        // Adapt EngineResult → DemoRoutesPayload for MapView.
         const adapted: DemoRoutesPayload = {
           schema_version: 1,
           generated_at: new Date().toISOString(),
@@ -155,7 +157,7 @@ export default function HomePage() {
       })
       .catch((err) => { if (!cancelled) setRouteError(err.message); });
     return () => { cancelled = true; };
-  }, [step, geoRoutes, isHero, from, to, fromPick, toPick]);
+  }, [step, isHero, from, to, fromPick, toPick]);
 
   function reset() {
     setStep('landing');
@@ -287,8 +289,6 @@ export default function HomePage() {
                 onPick={(p) => {
                   setFrom(p.name);
                   setFromPick(p);
-                  setGeoRoutes(null);
-                  setLiveBase(null);
                   setRouteError(null);
                 }}
                 placeholder="Start address"
@@ -306,8 +306,6 @@ export default function HomePage() {
                 onPick={(p) => {
                   setTo(p.name);
                   setToPick(p);
-                  setGeoRoutes(null);
-                  setLiveBase(null);
                   setRouteError(null);
                 }}
                 placeholder="Destination"

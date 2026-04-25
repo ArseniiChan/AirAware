@@ -169,9 +169,9 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
       >
         <NavigationControl position="top-right" showCompass={false} />
 
-        {showHeatmap && <HeatmapLayer />}
+        {showHeatmap && styleReady && <HeatmapLayer />}
 
-        {standardGeoJson && (
+        {standardGeoJson && styleReady && (
           <Source id="route-standard" type="geojson" data={standardGeoJson}>
             <Layer
               id="route-standard-casing"
@@ -198,7 +198,7 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
           </Source>
         )}
 
-        {atlasGeoJson && (
+        {atlasGeoJson && styleReady && (
           <Source id="route-atlas" type="geojson" data={atlasGeoJson}>
             <Layer
               id="route-atlas-casing"
