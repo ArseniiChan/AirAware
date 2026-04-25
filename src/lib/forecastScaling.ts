@@ -119,10 +119,64 @@ export function scaleRoutesByForecast(
   if (!z || z.hourly.length === 0) return base;
   const nowEntry = z.hourly[0];
   const sliceEntry = entryForSlice(z.hourly, slice, forecast.generated_at);
-  if (!nowEntry || !sliceEntry) return base;
+  return applyScale(base, nowEntry, sliceEntry);
+}
 
-  const scale = sliceEntry.aqi / Math.max(nowEntry.aqi, 1);
+/** Pick the forecast hour closest to a precise NYC-local time + day offset. */
+export function entryForLocalTime(
+  hourly: ForecastHour[],
+  hh: number,
+  mm: number,
+  dayOffset: 0 | 1,
+  generatedAtIso: string,
+): ForecastHour | null {
+  if (hourly.length === 0) return null;
+  const gen = new Date(generatedAtIso);
+  if (Number.isNaN(gen.getTime())) return hourly[0];
 
+  const target = new Date(gen);
+  target.setUTCDate(target.getUTCDate() + dayOffset);
+  // Convert NYC-local (hh:mm) → UTC by subtracting NYC offset (negative number).
+  target.setUTCHours(hh - NYC_UTC_OFFSET_HOURS, mm, 0, 0);
+
+  let bestIdx = 0;
+  let bestDelta = Infinity;
+  for (let i = 0; i < hourly.length; i++) {
+    const t = new Date(hourly[i].iso_hour).getTime();
+    const d = Math.abs(t - target.getTime());
+    if (d < bestDelta) { bestDelta = d; bestIdx = i; }
+  }
+  return hourly[bestIdx];
+}
+
+/** Hourly-precise scaling: pick the forecast hour matching the user's typed
+ *  local time and rescale exposure by that hour's AQI ratio vs now. */
+export function scaleRoutesByLocalTime(
+  base: RouteOptions,
+  forecast: AqiForecast,
+  zcta: string,
+  time: string,
+  dayOffset: 0 | 1,
+): RouteOptions {
+  const z = forecast.zctas[zcta];
+  if (!z || z.hourly.length === 0) return base;
+  const [hStr, mStr] = time.split(':');
+  const hh = Number(hStr);
+  const mm = Number(mStr ?? '0');
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return base;
+
+  const nowEntry = z.hourly[0];
+  const targetEntry = entryForLocalTime(z.hourly, hh, mm, dayOffset, forecast.generated_at);
+  return applyScale(base, nowEntry, targetEntry);
+}
+
+function applyScale(
+  base: RouteOptions,
+  nowEntry: ForecastHour | null,
+  targetEntry: ForecastHour | null,
+): RouteOptions {
+  if (!nowEntry || !targetEntry) return base;
+  const scale = targetEntry.aqi / Math.max(nowEntry.aqi, 1);
   const adjust = (r: RouteOptions['standard']) => ({
     avgAqi: Math.round(r.avgAqi * scale),
     maxAqi: Math.round(r.maxAqi * scale),
@@ -135,9 +189,5 @@ export function scaleRoutesByForecast(
     ),
     totalMinutes: r.totalMinutes,
   });
-
-  return {
-    standard: adjust(base.standard),
-    atlas: adjust(base.atlas),
-  };
+  return { standard: adjust(base.standard), atlas: adjust(base.atlas) };
 }

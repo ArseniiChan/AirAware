@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { TimeScrubber, type TimeSlice } from '@/components/TimeScrubber';
+import {
+  TimeScrubber,
+  currentLocalHhmm,
+  snapToSlice,
+  type DepartTime,
+} from '@/components/TimeScrubber';
 import { OnboardingStep } from '@/components/OnboardingStep';
 import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
@@ -12,7 +17,7 @@ import { RouteSummaryCards } from '@/components/RouteSummaryCards';
 import { Scorecard } from '@/components/Scorecard';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
-import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
+import { loadForecast, scaleRoutesByLocalTime, type AqiForecast } from '@/lib/forecastScaling';
 import { reverseGeocode, locateMe, GeolocateError } from '@/lib/geolocate';
 import type { RouteOptions } from '@/lib/recommendation';
 
@@ -55,7 +60,10 @@ export default function HomePage() {
   const [to, setTo] = useState('');
   const [fromPick, setFromPick] = useState<AddressPick | null>(null);
   const [toPick,   setToPick]   = useState<AddressPick | null>(null);
-  const [timeSlice, setTimeSlice] = useState<TimeSlice>('now');
+  const [departTime, setDepartTime] = useState<DepartTime>(() => ({
+    time: currentLocalHhmm(),
+    dayOffset: 0,
+  }));
   const [geoRoutes, setGeoRoutes] = useState<DemoRoutesPayload | null>(null);
   const [liveBase, setLiveBase] = useState<RouteOptions | null>(null);
   const [engineWarning, setEngineWarning] = useState<string | null>(null);
@@ -74,12 +82,18 @@ export default function HomePage() {
   //      effect; better than nothing while loading).
   const routes: RouteOptions | null = useMemo(() => {
     if (step !== 'results') return null;
-    if (isHero) return HERO_ROUTES_BY_TIME[timeSlice];
+    if (isHero) return HERO_ROUTES_BY_TIME[snapToSlice(departTime.time, departTime.dayOffset)];
     if (liveBase && forecast) {
-      return scaleRoutesByForecast(liveBase, forecast, FALLBACK_ZCTA, timeSlice);
+      return scaleRoutesByLocalTime(
+        liveBase,
+        forecast,
+        FALLBACK_ZCTA,
+        departTime.time,
+        departTime.dayOffset,
+      );
     }
     return liveBase;
-  }, [step, isHero, timeSlice, liveBase, forecast]);
+  }, [step, isHero, departTime, liveBase, forecast]);
 
   // Load the forecast once the user leaves the landing screen. Deferring
   // until "from" keeps the landing-page LCP fast — the forecast file isn't
@@ -176,7 +190,7 @@ export default function HomePage() {
     setTo('');
     setFromPick(null);
     setToPick(null);
-    setTimeSlice('now');
+    setDepartTime({ time: currentLocalHhmm(), dayOffset: 0 });
     setGeoRoutes(null);
     setLiveBase(null);
     setRouteError(null);
@@ -380,7 +394,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-3">
-            <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
+            <TimeScrubber value={departTime} onChange={setDepartTime} />
           </div>
         </div>
 
