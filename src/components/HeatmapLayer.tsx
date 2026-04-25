@@ -109,84 +109,40 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
 
   if (!data) return null;
 
-  // Two layers — restored to the state it was in at the prompt the user
-  // referenced ("only northern NYC colored / red dots / variance"):
-  //
-  //  1. Heatmap (zoom < 12): only cells AQI >= 70 contribute, kernels stay
-  //     small so hot spots are distinct rather than smearing.
-  //  2. Polygon fill (zoom >= 11): each grid cell's actual 200m square,
-  //     opacity driven by AQI so clean blocks fade into the basemap and
-  //     dirty blocks dominate.
+  // Restored to the visual state at commit 176755b (4:37pm 2026-04-25),
+  // which the user identified as "good around 4:40pm". Single polygon
+  // fill at all zooms, floor opacity so the whole city is tinted, 8-stop
+  // amber→deep-red ramp.
   return (
     <Source id="aqi-heatmap" type="geojson" data={data} buffer={32}>
-      <Layer
-        id="aqi-heatmap-layer"
-        type="heatmap"
-        slot="bottom"
-        maxzoom={12}
-        paint={{
-          'heatmap-weight': [
-            'interpolate', ['linear'], ['get', 'aqi'],
-            70, 0,
-            90, 0.25,
-            120, 0.55,
-            160, 0.85,
-            200, 1.0,
-          ],
-          'heatmap-intensity': [
-            'interpolate', ['linear'], ['zoom'],
-            9, 0.8,
-            11, 1.1,
-            12, 1.4,
-          ],
-          'heatmap-color': [
-            'interpolate', ['linear'], ['heatmap-density'],
-            0,    'rgba(0,0,0,0)',
-            0.10, 'rgba(250,204,21,0)',
-            0.20, 'rgba(250,204,21,0.40)',
-            0.45, 'rgba(249,115,22,0.65)',
-            0.70, 'rgba(220,38,38,0.78)',
-            1.0,  'rgba(127,29,29,0.88)',
-          ],
-          'heatmap-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            9, 6,
-            10, 9,
-            11, 13,
-            12, 18,
-          ],
-          'heatmap-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            9, 0.85,
-            11, 0.8,
-            12, 0,
-          ],
-        }}
-      />
       <Layer
         id="aqi-cells-fill"
         type="fill"
         slot="bottom"
-        minzoom={11}
         paint={{
           'fill-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
-             0,   '#86efac',
-            50,   '#fde047',
-           100,   '#fb923c',
-           150,   '#ef4444',
-           200,   '#7f1d1d',
+             0,   '#fde68a', // pale amber — even clean cells get a tint
+            40,   '#fcd34d', // soft yellow
+            70,   '#fbbf24', // gold
+            95,   '#fb923c', // orange (sensitive)
+           120,   '#f97316', // dark orange
+           140,   '#ef4444', // red (unhealthy)
+           165,   '#dc2626', // dark red
+           200,   '#7f1d1d', // hazardous
           ],
+          // Floor opacity 0.32 so the cleanest blocks are still visibly
+          // tinted (NYCCAS-style — no transparent gaps). Steep ramp through
+          // the middle so contrast is loud where it matters.
           'fill-opacity': [
-            '*',
-            ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 0.6, 13, 1, 16, 1],
-            ['interpolate', ['linear'], ['get', 'aqi'],
-              0,   0.08,
-              50,  0.20,
-              100, 0.55,
-              150, 0.78,
-              200, 0.88,
-            ],
+            'interpolate', ['linear'], ['get', 'aqi'],
+            0,    0.32,
+            40,   0.40,
+            70,   0.52,
+            95,   0.65,
+            120,  0.78,
+            140,  0.86,
+            180,  0.92,
           ],
           'fill-antialias': false,
         }}
