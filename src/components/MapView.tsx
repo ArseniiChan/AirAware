@@ -185,8 +185,8 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false, o
         onMouseLeave={onMapLeave}
         onContextMenu={(e) => {
           if (!onLongPress) return;
-          // Suppress the browser's right-click menu / iOS callout so the user
-          // sees the pin land cleanly.
+          // Right-click on desktop (or cmd-click on Mac), long-touch on
+          // mobile. Suppress the browser's native menu so the pin lands cleanly.
           e.preventDefault?.();
           onLongPress(e.lngLat.lng, e.lngLat.lat);
         }}

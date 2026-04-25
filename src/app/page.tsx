@@ -333,7 +333,10 @@ export default function HomePage() {
                   setFrom(p.name);
                   setFromPick(p);
                   setRouteError(null);
+                  rememberPick(p);
+                  setRecentPicks(loadRecentPicks());
                 }}
+                showCurrentLocation
                 placeholder="Start address"
                 className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               />

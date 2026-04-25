@@ -6,6 +6,7 @@ import {
   NYC_BBOX,
   BRONX_PROXIMITY,
 } from '@/lib/mapbox';
+import { locateMe, GeolocateError } from '@/lib/geolocate';
 
 export interface AddressPick {
   name: string;     // human-readable, e.g. "1290 Spofford Ave, Bronx, New York"
@@ -45,21 +46,53 @@ interface Props {
    *  user obviously meant the preset, not a search. Demo-critical: without
    *  this, the dropdown intercepts the submit button click. */
   presetValues?: readonly string[];
+  /** When true, surfaces a "Use current location" row at the top of the
+   *  dropdown when the input is empty / short. On click, runs locateMe()
+   *  (browser geolocation + reverse-geocode) and fires onPick. */
+  showCurrentLocation?: boolean;
 }
 
 const DEBOUNCE_MS = 220;
 const MIN_QUERY = 3;
 
 export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function AddressAutocomplete(
-  { value, onChange, onPick, placeholder, className, locked = false, presetValues },
+  { value, onChange, onPick, placeholder, className, locked = false, presetValues, showCurrentLocation = false },
   ref,
 ) {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Show the "Use current location" pseudo-row while the user hasn't typed
+  // anything substantial yet. Once they start typing real characters, the
+  // search results take over.
+  const showLocateRow = showCurrentLocation && value.trim().length < MIN_QUERY && !locked;
+
+  async function pickCurrentLocation() {
+    setLocating(true);
+    setLocateError(null);
+    try {
+      const me = await locateMe();
+      onChange(me.name);
+      onPick(me);
+      setOpen(false);
+    } catch (err) {
+      if (err instanceof GeolocateError) {
+        if (err.code === 'denied') setLocateError('Location permission denied. Type your address.');
+        else if (err.code === 'outside_nyc') setLocateError('You appear to be outside NYC.');
+        else setLocateError('Could not get your location.');
+      } else {
+        setLocateError('Could not get your location.');
+      }
+    } finally {
+      setLocating(false);
+    }
+  }
 
   // Debounced fetch.
   useEffect(() => {
@@ -148,7 +181,11 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
         ref={ref}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onFocus={() => { if (features.length > 0) setOpen(true); }}
+        onFocus={() => {
+          // Open the dropdown on focus if we have suggestions OR if we can
+          // surface the "Use current location" row.
+          if (features.length > 0 || showLocateRow) setOpen(true);
+        }}
         onKeyDown={handleKey}
         placeholder={placeholder}
         autoComplete="off"
@@ -161,11 +198,29 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
           …
         </span>
       )}
-      {open && features.length > 0 && (
+      {open && (showLocateRow || features.length > 0) && (
         <ul
           role="listbox"
           className="absolute z-20 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
         >
+          {showLocateRow && (
+            <li
+              role="option"
+              aria-selected={false}
+              onMouseDown={(e) => { e.preventDefault(); pickCurrentLocation(); }}
+              className="flex cursor-pointer items-center gap-2 border-b border-slate-100 px-4 py-2 text-left text-sm text-emerald-800 hover:bg-emerald-50"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.4" />
+                <circle cx="8" cy="8" r="1" fill="currentColor" />
+                <path d="M8 1v2 M8 13v2 M1 8h2 M13 8h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              <div className="flex-1">
+                <div className="font-medium">{locating ? 'Locating…' : 'Use current location'}</div>
+                {locateError && <div className="text-xs text-amber-700">{locateError}</div>}
+              </div>
+            </li>
+          )}
           {features.map((f, i) => (
             <li
               key={f.id}
