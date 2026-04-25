@@ -109,53 +109,84 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
 
   if (!data) return null;
 
-  // Reference: NYCCAS PM2.5 annual-average map (NYC DOHMH). The whole city
-  // is colored — Staten Island light orange, outer boroughs deeper orange,
-  // Manhattan + Bronx deep red, with major arterials burning through as
-  // red threads. We render that with a single polygon fill layer at ALL
-  // zooms — every grid cell shows its own AQI color. No heatmap kernel
-  // (those produced isolated red dots and a city-wide blob).
+  // Two layers — restored to the state it was in at the prompt the user
+  // referenced ("only northern NYC colored / red dots / variance"):
+  //
+  //  1. Heatmap (zoom < 12): only cells AQI >= 70 contribute, kernels stay
+  //     small so hot spots are distinct rather than smearing.
+  //  2. Polygon fill (zoom >= 11): each grid cell's actual 200m square,
+  //     opacity driven by AQI so clean blocks fade into the basemap and
+  //     dirty blocks dominate.
   return (
     <Source id="aqi-heatmap" type="geojson" data={data} buffer={32}>
+      <Layer
+        id="aqi-heatmap-layer"
+        type="heatmap"
+        slot="bottom"
+        maxzoom={12}
+        paint={{
+          'heatmap-weight': [
+            'interpolate', ['linear'], ['get', 'aqi'],
+            70, 0,
+            90, 0.25,
+            120, 0.55,
+            160, 0.85,
+            200, 1.0,
+          ],
+          'heatmap-intensity': [
+            'interpolate', ['linear'], ['zoom'],
+            9, 0.8,
+            11, 1.1,
+            12, 1.4,
+          ],
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0,    'rgba(0,0,0,0)',
+            0.10, 'rgba(250,204,21,0)',
+            0.20, 'rgba(250,204,21,0.40)',
+            0.45, 'rgba(249,115,22,0.65)',
+            0.70, 'rgba(220,38,38,0.78)',
+            1.0,  'rgba(127,29,29,0.88)',
+          ],
+          'heatmap-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            9, 6,
+            10, 9,
+            11, 13,
+            12, 18,
+          ],
+          'heatmap-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            9, 0.85,
+            11, 0.8,
+            12, 0,
+          ],
+        }}
+      />
       <Layer
         id="aqi-cells-fill"
         type="fill"
         slot="bottom"
+        minzoom={11}
         paint={{
-          // Continuous hue ramp — 16 stops so every AQI integer maps to its
-          // own visibly distinct shade, not just band buckets.
           'fill-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
-             0,   '#bbf7d0', // good — pale mint
-            25,   '#86efac', // good
-            45,   '#bef264', // good-moderate
-            60,   '#fde047', // moderate (yellow)
-            75,   '#facc15',
-            90,   '#fbbf24', // gold
-           105,   '#f59e0b',
-           120,   '#fb923c', // sensitive (orange)
-           135,   '#f97316',
-           150,   '#ef4444', // unhealthy (red)
-           165,   '#dc2626',
-           180,   '#b91c1c',
-           200,   '#991b1b',
-           230,   '#7f1d1d', // very unhealthy
-           280,   '#65141d',
-           340,   '#4c0519', // hazardous
+             0,   '#86efac',
+            50,   '#fde047',
+           100,   '#fb923c',
+           150,   '#ef4444',
+           200,   '#7f1d1d',
           ],
-          // Steep AQI-driven opacity — clean blocks fade into the basemap,
-          // dirty blocks dominate. No floor (avoids the citywide tint that
-          // smeared into Bronx + Manhattan looking the same).
           'fill-opacity': [
-            'interpolate', ['linear'], ['get', 'aqi'],
-            0,    0.0,
-            45,   0.05,
-            65,   0.18,
-            85,   0.35,
-            105,  0.55,
-            125,  0.72,
-            150,  0.85,
-            200,  0.92,
+            '*',
+            ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 0.6, 13, 1, 16, 1],
+            ['interpolate', ['linear'], ['get', 'aqi'],
+              0,   0.08,
+              50,  0.20,
+              100, 0.55,
+              150, 0.78,
+              200, 0.88,
+            ],
           ],
           'fill-antialias': false,
         }}
