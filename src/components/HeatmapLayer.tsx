@@ -117,14 +117,16 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
             140, 0.80,
             180, 1.0,
           ],
-          // Intensity scales up with zoom so the same density of points
-          // doesn't wash out as cells become further apart on screen.
+          // Intensity tracks the radius growth — as the kernel widens at
+          // high zoom, per-pixel density drops; intensity bumps it back up
+          // so the gradient stays visible and the circles don't darken.
           'heatmap-intensity': [
             'interpolate', ['linear'], ['zoom'],
             8,  0.6,
             11, 1.0,
-            13, 1.6,
-            15, 2.4,
+            13, 1.4,
+            15, 2.2,
+            17, 3.4,
           ],
           // Color ramp — amber at low density through deep red at high.
           // Start with a tiny non-zero alpha so even very low density has
@@ -141,16 +143,19 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
             0.90, 'rgba(220, 38, 38, 0.92)',   // dark red
             1.0,  'rgba(127, 29, 29, 0.94)',   // hazardous deep red
           ],
-          // Radius needs to grow with zoom so kernels keep overlapping
-          // their neighbors as cells space out on screen.
+          // Radius doubles each zoom level so kernels keep overlapping their
+          // 200m-spaced neighbors at every zoom. Without this, at zoom 15+
+          // each cell renders as its own discrete circle — the "bunch of
+          // circles" the user complained about. 200m on screen ≈ 21px @ z13,
+          // 84px @ z15, 336px @ z17 → radius needs to roughly match.
           'heatmap-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            8,  4,
-            10, 8,
-            12, 16,
-            14, 32,
-            16, 64,
-            18, 128,
+            'interpolate', ['exponential', 2], ['zoom'],
+            8,  6,
+            10, 16,
+            12, 48,
+            14, 160,
+            16, 600,
+            18, 1024,
           ],
           'heatmap-opacity': 0.85,
         }}
