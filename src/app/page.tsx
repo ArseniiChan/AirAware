@@ -10,6 +10,7 @@ import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
 import { MapView } from '@/components/MapView';
 import { AddressAutocomplete, type AddressPick } from '@/components/AddressAutocomplete';
+import { RouteSummaryCards } from '@/components/RouteSummaryCards';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
@@ -325,8 +326,12 @@ export default function HomePage() {
           className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-2xl border border-emerald-100 bg-white/70 shadow-xl shadow-emerald-500/10 backdrop-blur"
           style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}
         >
-          <MapView routes={geoRoutes} showHeatmap />
+          <MapView routes={geoRoutes} exposure={routes} showHeatmap />
         </section>
+
+        <div style={{ animation: 'air-fade 0.6s ease-out 0.05s both' }}>
+          <RouteSummaryCards geo={geoRoutes} exposure={routes} />
+        </div>
 
         {routeError && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 backdrop-blur">

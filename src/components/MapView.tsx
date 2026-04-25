@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Map, { Layer, Marker, NavigationControl, Source, type MapRef } from 'react-map-gl';
+import Map, {
+  Layer,
+  Marker,
+  NavigationControl,
+  Popup,
+  Source,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import {
   MAPBOX_TOKEN,
@@ -16,11 +24,15 @@ import {
 } from '@/lib/mapbox';
 import type { DemoRoutesPayload } from '@/lib/routesData';
 import { HeatmapLayer } from './HeatmapLayer';
+import { formatDistance, formatWalkTime, estimateSteps } from '@/lib/healthMath';
+import type { RouteOptions } from '@/lib/recommendation';
 
 interface Props {
   /** When provided, renders the standard (red) and atlas (green) polylines and
    *  fits the camera to their combined bounds with a cinematic pitch. */
   routes?: DemoRoutesPayload | null;
+  /** Per-route exposure stats (slice-aware). Used in the route hover popup. */
+  exposure?: RouteOptions | null;
   /** Render the AQI heatmap behind buildings. Off by default. */
   showHeatmap?: boolean;
 }
@@ -33,10 +45,26 @@ const LIGHT_LABEL: Record<LightPreset, string> = {
   dawn: '🌅', day: '☀️', dusk: '🌆', night: '🌙',
 };
 
-export function MapView({ routes = null, showHeatmap = false }: Props) {
+type RouteKind = 'standard' | 'atlas';
+const ROUTE_LAYER_IDS = ['route-standard-line', 'route-atlas-line'];
+
+export function MapView({ routes = null, exposure = null, showHeatmap = false }: Props) {
   const mapRef = useRef<MapRef | null>(null);
   const [styleReady, setStyleReady] = useState(false);
   const [lightPreset, setLightPreset] = useState<LightPreset>(DEFAULT_LIGHT_PRESET);
+  const [hovered, setHovered] = useState<{
+    kind: RouteKind;
+    lon: number;
+    lat: number;
+  } | null>(null);
+
+  function onMapMove(e: MapLayerMouseEvent) {
+    const f = e.features?.[0];
+    if (!f) { setHovered(null); return; }
+    const kind: RouteKind = f.layer?.id === 'route-atlas-line' ? 'atlas' : 'standard';
+    setHovered({ kind, lon: e.lngLat.lng, lat: e.lngLat.lat });
+  }
+  function onMapLeave() { setHovered(null); }
 
   // Apply Standard's lightPreset config whenever the style is ready or the
   // user cycles it. setConfigProperty is the v3 API for live theme switching.
@@ -134,6 +162,10 @@ export function MapView({ routes = null, showHeatmap = false }: Props) {
         attributionControl={false}
         onLoad={() => setStyleReady(true)}
         onStyleData={() => setStyleReady(true)}
+        interactiveLayerIds={ROUTE_LAYER_IDS}
+        onMouseMove={onMapMove}
+        onMouseLeave={onMapLeave}
+        cursor={hovered ? 'pointer' : 'grab'}
       >
         <NavigationControl position="top-right" showCompass={false} />
 
@@ -195,19 +227,40 @@ export function MapView({ routes = null, showHeatmap = false }: Props) {
 
         {routes && (
           <>
-            <Marker longitude={routes.pair.from.lon} latitude={routes.pair.from.lat} anchor="center">
-              <div
-                aria-label="Origin"
-                className="h-3.5 w-3.5 rounded-full border-2 border-white bg-slate-900 shadow-[0_4px_14px_rgba(0,0,0,0.4)]"
-              />
+            <Marker
+              longitude={routes.pair.from.lon}
+              latitude={routes.pair.from.lat}
+              anchor="bottom"
+            >
+              <PinMarker tone="origin" label="Home" />
             </Marker>
-            <Marker longitude={routes.pair.to.lon} latitude={routes.pair.to.lat} anchor="center">
-              <div
-                aria-label="Destination"
-                className="h-4 w-4 rounded-full border-2 border-white bg-emerald-600 shadow-[0_4px_14px_rgba(22,163,74,0.55)]"
-              />
+            <Marker
+              longitude={routes.pair.to.lon}
+              latitude={routes.pair.to.lat}
+              anchor="bottom"
+            >
+              <PinMarker tone="destination" label="School" />
             </Marker>
           </>
+        )}
+
+        {hovered && routes && exposure && (
+          <Popup
+            longitude={hovered.lon}
+            latitude={hovered.lat}
+            anchor="bottom"
+            offset={14}
+            closeButton={false}
+            closeOnClick={false}
+            className="airaware-popup"
+          >
+            <RouteHoverCard
+              kind={hovered.kind}
+              distanceM={hovered.kind === 'standard' ? routes.routes.standard.distance_m : routes.routes.atlas.distance_m}
+              durationS={hovered.kind === 'standard' ? routes.routes.standard.duration_s : routes.routes.atlas.duration_s}
+              exposure={hovered.kind === 'standard' ? exposure.standard : exposure.atlas}
+            />
+          </Popup>
         )}
       </Map>
 
@@ -220,6 +273,83 @@ export function MapView({ routes = null, showHeatmap = false }: Props) {
         <span aria-hidden>{LIGHT_LABEL[lightPreset]}</span>
         <span className="capitalize">{lightPreset}</span>
       </button>
+    </div>
+  );
+}
+
+// ---------- subcomponents ----------
+
+function PinMarker({ tone, label }: { tone: 'origin' | 'destination'; label: string }) {
+  const isOrigin = tone === 'origin';
+  const fill = isOrigin ? '#0f172a' : '#16a34a';
+  const ring = isOrigin ? 'ring-slate-900/30' : 'ring-emerald-500/40';
+  const icon = isOrigin ? '🏠' : '🏫';
+  return (
+    <div className="flex flex-col items-center" style={{ pointerEvents: 'none' }}>
+      <span
+        className={`mb-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-900 shadow ring-1 ${ring}`}
+      >
+        {label}
+      </span>
+      {/* SVG pin: round head + tail point. anchor="bottom" so the tip sits on the coord. */}
+      <svg width="30" height="40" viewBox="0 0 30 40" aria-label={label}>
+        <defs>
+          <filter id={`pin-shadow-${tone}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.4" />
+          </filter>
+        </defs>
+        <path
+          d="M15 0 C 6.7 0 0 6.7 0 15 C 0 25 15 40 15 40 C 15 40 30 25 30 15 C 30 6.7 23.3 0 15 0 Z"
+          fill={fill}
+          stroke="#ffffff"
+          strokeWidth="2.5"
+          filter={`url(#pin-shadow-${tone})`}
+        />
+        <text
+          x="15"
+          y="20"
+          textAnchor="middle"
+          fontSize="14"
+          dominantBaseline="middle"
+        >
+          {icon}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+function RouteHoverCard({
+  kind,
+  distanceM,
+  durationS,
+  exposure,
+}: {
+  kind: RouteKind;
+  distanceM: number;
+  durationS: number;
+  exposure: RouteOptions['standard'];
+}) {
+  const isAtlas = kind === 'atlas';
+  const steps = estimateSteps(distanceM, durationS / 60);
+  return (
+    <div className="min-w-[160px] space-y-1.5 px-1 py-0.5 text-[11px] text-slate-900">
+      <div className="flex items-center gap-1.5 font-bold">
+        <span
+          className={`inline-block h-2 w-2 rounded-full ${isAtlas ? 'bg-emerald-600' : 'bg-red-600'}`}
+        />
+        {isAtlas ? 'AirAware route' : 'Standard route'}
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-slate-700">
+        <span>⏱️ Walk</span>
+        <span className="text-right font-semibold">{formatWalkTime(durationS)}</span>
+        <span>📏 Distance</span>
+        <span className="text-right font-semibold">{formatDistance(distanceM)}</span>
+        <span>👟 Steps</span>
+        <span className="text-right font-semibold">~{steps.toLocaleString()}</span>
+        <span>🌬️ Bad air</span>
+        <span className="text-right font-semibold">{exposure.exposureMinutes} min</span>
+      </div>
     </div>
   );
 }

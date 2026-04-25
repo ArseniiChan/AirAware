@@ -16,3 +16,14 @@ body {
   color: rgb(var(--foreground));
   -webkit-font-smoothing: antialiased;
 }
+
+/* Custom Mapbox popup styling so the route hover tooltip matches our cards */
+.mapboxgl-popup.airaware-popup .mapboxgl-popup-content {
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.35);
+  font-family: inherit;
+}
+.mapboxgl-popup.airaware-popup .mapboxgl-popup-tip {
+  border-top-color: #ffffff;
+}
