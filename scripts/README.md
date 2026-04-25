@@ -74,14 +74,16 @@ python -m pytest -q
 
 ## Sensor priority chain (the heatmap grid)
 
-`ingest_aqi.py` now pulls from three free networks and merges them, then layers a synthetic NO2 boost on cells near major arterials:
+`ingest_aqi.py` pulls from five free networks and merges them, then layers a synthetic NO2 boost on cells near major arterials:
 
-1. **EPA AirNow** (regulatory grade, ~4 NYC sensors today) — most authoritative; per-ZCTA
-2. **OpenAQ v3** (~27 NYC locations including AirNow + state networks) — set `OPENAQ_API_KEY` (free signup at https://explore.openaq.org/account)
-3. **PurpleAir** (~80 community sensors today) — set `PURPLEAIR_API_KEY` (free, request at https://develop.purpleair.com/keys)
-4. **NO2 highway boost** — synthetic +20-30 AQI for cells within ~50m of I-95 / Bruckner / BQE / FDR / LIE / Major Deegan, with linear taper out to ~100m. Models the curb-side NO2 a kid actually breathes walking past a bus depot. Disabled with `--no-highway-boost`.
+1. **EPA AirNow** (regulatory grade, sparse) — set `AIRNOW_API_KEY`. Most authoritative current observations.
+2. **NYCCAS** (NYC DOHMH Community Air Survey, ~30 sites, 2 pollutants/site) — annual averages calibrated by NYC's own health department. Currently fixture-only; live raster sampling at q68s-8qxv on NYC Open Data is a follow-up.
+3. **OpenAQ v3** (~27 NYC locations) — set `OPENAQ_API_KEY` (free at https://explore.openaq.org/account).
+4. **PurpleAir** (~80 community sensors) — set `PURPLEAIR_API_KEY` (free at https://develop.purpleair.com/keys).
+5. **NASA TEMPO** (geostationary satellite, ~14 NYC pixels at 10km res) — NO2 column densities converted to surface AQI via boundary-layer mixing-height heuristic. Currently fixture-only modeled on real TEMPO L2 NYC retrievals; live access via NASA Earthdata + Harmony API is a follow-up. Set `EARTHDATA_TOKEN` for the live path when wired.
+6. **NO2 highway boost** — synthetic +20-30 AQI for cells within ~50m of I-95 / Bruckner / BQE / FDR / LIE / Major Deegan, with linear taper to ~100m. Models the curb-side NO2 a kid actually breathes past a bus depot. Disabled with `--no-highway-boost`.
 
-Sources are deduped by `(lat, lon, parameter)`. AirNow > OpenAQ > PurpleAir on collisions for regulatory rigor. Today's live merge: 114 unique sensors.
+Sources deduped by `(lat, lon, parameter)`. Priority on collisions: AirNow > NYCCAS > OpenAQ > PurpleAir > TEMPO. Today's live merge: 189 unique sensors.
 
 ### Demo snapshot modes
 

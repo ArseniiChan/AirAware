@@ -30,6 +30,8 @@ from lib.grid import generate_grid
 from lib.idw import idw
 from lib.openaq import OpenAQClient
 from lib.purpleair import PurpleAirClient
+from lib.nyccas import NYCCASClient
+from lib.tempo import TempoClient
 from lib.no2_boost import apply_highway_boost
 
 DEFAULT_NYC_BBOX = (-74.27, 40.49, -73.68, 40.92)
@@ -132,11 +134,15 @@ def main():
     airnow = AirNowClient(observations_fixture=observations_fixture)
     openaq = OpenAQClient()
     purpleair = PurpleAirClient()
+    nyccas = NYCCASClient()
+    tempo = TempoClient()
 
     print(
         f"AirNow:    {'OFFLINE' if airnow.is_offline    else 'LIVE'} | "
         f"OpenAQ:    {'OFFLINE' if openaq.is_offline    else 'LIVE'} | "
-        f"PurpleAir: {'OFFLINE' if purpleair.is_offline else 'LIVE'}"
+        f"PurpleAir: {'OFFLINE' if purpleair.is_offline else 'LIVE'} | "
+        f"NYCCAS:    {'OFFLINE' if nyccas.is_offline    else 'LIVE'} | "
+        f"TEMPO:     {'OFFLINE' if tempo.is_offline     else 'LIVE'}"
     )
 
     # AirNow: per-ZCTA, regulatory grade
@@ -162,10 +168,29 @@ def main():
         purpleair_sensors = []
     print(f"  PurpleAir sensors: {len(purpleair_sensors)}")
 
+    try:
+        nyccas_sensors = nyccas.sensors_in_bbox(bbox)
+    except Exception as e:
+        print(f"  warn: NYCCAS failed ({e})")
+        nyccas_sensors = []
+    print(f"  NYCCAS sensors: {len(nyccas_sensors)}")
+
+    try:
+        tempo_sensors = tempo.sensors_in_bbox(bbox)
+    except Exception as e:
+        print(f"  warn: TEMPO failed ({e})")
+        tempo_sensors = []
+    print(f"  TEMPO pixels: {len(tempo_sensors)}")
+
+    # Source priority on dedupe collisions: regulatory > NYC ground-truth >
+    # community > satellite. NYCCAS calibrated better than community sensors,
+    # but is annual-average so AirNow current readings still take precedence.
     sensors, contributed = merge_sensors(
         ("airnow", airnow_sensors),
+        ("nyccas", nyccas_sensors),
         ("openaq", openaq_sensors),
         ("purpleair", purpleair_sensors),
+        ("tempo", tempo_sensors),
     )
     print(f"  After dedupe: {len(sensors)} unique sensors (contrib: {contributed})")
     if len(sensors) < 4:
@@ -180,11 +205,16 @@ def main():
         boosted_count_after = sum(1 for c in cells if c["aqi"] >= 100)
         print(f"NO2 highway boost: cells ≥AQI100 went {boosted_count_before} → {boosted_count_after}")
 
-    fully_offline = airnow.is_offline and openaq.is_offline and purpleair.is_offline
+    fully_offline = (
+        airnow.is_offline and openaq.is_offline and purpleair.is_offline
+        and nyccas.is_offline and tempo.is_offline
+    )
     sources_used = [s for s in (
         "AirNow" if airnow_sensors else None,
+        "NYCCAS" if nyccas_sensors else None,
         "OpenAQ" if openaq_sensors else None,
         "PurpleAir" if purpleair_sensors else None,
+        "TEMPO" if tempo_sensors else None,
     ) if s]
     source_str = " + ".join(sources_used) if sources_used else "fixtures"
     payload = {

@@ -1,0 +1,22 @@
+{
+  "_comment": "NASA TEMPO (Tropospheric Emissions: Monitoring of Pollution) is a geostationary satellite launched April 2023 measuring hourly NO2 + O3 + HCHO over North America at ~2-10 km resolution. Values below model NYC tropospheric NO2 column densities at typical late-morning conditions: industrial corridors 10-15 × 10^15 molec/cm², urban core 7-10, residential 4-7, water/parks 2-4. Anchored on TEMPO L2 NO2 retrievals from clear-sky NYC days in 2024. Convert column → surface NO2 ppb via the boundary-layer mixing-height heuristic (column / mixing_height ≈ ppb), then NO2 ppb → AQI per EPA breakpoints.",
+  "based_on": "NASA TEMPO L2 NO2 daily product, modeled on clear-sky NYC observations 2024",
+  "grid_resolution_km": 10,
+  "mixing_height_m": 1000,
+  "pixels": [
+    {"lat": 40.81, "lon": -73.89, "no2_column_1e15": 14.5, "label": "South Bronx / Hunts Point industrial"},
+    {"lat": 40.83, "lon": -73.92, "no2_column_1e15": 11.8, "label": "Mid Bronx"},
+    {"lat": 40.86, "lon": -73.88, "no2_column_1e15":  9.4, "label": "Northeast Bronx"},
+    {"lat": 40.76, "lon": -73.98, "no2_column_1e15": 13.2, "label": "Midtown Manhattan"},
+    {"lat": 40.78, "lon": -73.96, "no2_column_1e15": 10.5, "label": "Upper Manhattan"},
+    {"lat": 40.72, "lon": -74.00, "no2_column_1e15": 11.2, "label": "Lower Manhattan"},
+    {"lat": 40.69, "lon": -73.95, "no2_column_1e15":  9.8, "label": "Brooklyn northwest"},
+    {"lat": 40.66, "lon": -73.94, "no2_column_1e15":  7.5, "label": "Central Brooklyn"},
+    {"lat": 40.62, "lon": -73.97, "no2_column_1e15":  5.4, "label": "South Brooklyn"},
+    {"lat": 40.74, "lon": -73.88, "no2_column_1e15":  9.1, "label": "Western Queens"},
+    {"lat": 40.71, "lon": -73.83, "no2_column_1e15":  7.2, "label": "Central Queens"},
+    {"lat": 40.68, "lon": -73.78, "no2_column_1e15":  5.8, "label": "Eastern Queens"},
+    {"lat": 40.59, "lon": -74.10, "no2_column_1e15":  4.6, "label": "North Staten Island"},
+    {"lat": 40.55, "lon": -74.15, "no2_column_1e15":  3.8, "label": "South Staten Island"}
+  ]
+}
