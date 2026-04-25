@@ -426,7 +426,6 @@ export default function HomePage() {
             exposure={routes}
             showHeatmap
             heatmapHour={departTimeToHour(departTime)}
-            showPollutionSources
             onLongPress={handleMapLongPress}
           />
         </section>

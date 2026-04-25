@@ -1,12 +1,14 @@
 'use client';
 
 import { forwardRef, useEffect, useRef, useState } from 'react';
+import { useLocale } from 'next-intl';
 import {
   MAPBOX_TOKEN,
   NYC_BBOX,
   BRONX_PROXIMITY,
 } from '@/lib/mapbox';
 import { locateMe, GeolocateError } from '@/lib/geolocate';
+import { isVoiceInputAvailable, listen, type ListenHandle } from '@/lib/voiceInput';
 
 // Mapbox Search Box API session token. The same UUID across suggest+retrieve
 // calls gets billed as one session (free tier: 1000 sessions / month). We
@@ -97,6 +99,7 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
   { value, onChange, onPick, placeholder, className, locked = false, presetValues, showCurrentLocation = false },
   ref,
 ) {
+  const locale = useLocale();
   const [features, setFeatures] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -105,6 +108,42 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
   const [locateError, setLocateError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Voice-input session for the inline mic button. Null when idle.
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const listenHandleRef = useRef<ListenHandle | null>(null);
+  const voiceAvailable = isVoiceInputAvailable();
+
+  function startVoice() {
+    setVoiceError(null);
+    setListening(true);
+    listenHandleRef.current = listen({
+      locale,
+      onResult: (transcript) => {
+        // Drop the transcript straight into the input. The existing debounced
+        // suggestion fetch picks it up — same path as a typed query.
+        onChange(transcript);
+      },
+      onError: (code) => {
+        if (code === 'not-allowed') setVoiceError('Mic access denied.');
+        else if (code === 'no-speech') setVoiceError('Didn\'t catch that.');
+        else if (code === 'not-supported') setVoiceError('Voice not supported in this browser.');
+        else setVoiceError('Voice input failed.');
+      },
+      onEnd: () => {
+        setListening(false);
+        listenHandleRef.current = null;
+      },
+    });
+    if (!listenHandleRef.current) setListening(false);
+  }
+  function stopVoice() {
+    listenHandleRef.current?.stop();
+    listenHandleRef.current = null;
+    setListening(false);
+  }
+  // Stop any in-flight recognition on unmount.
+  useEffect(() => () => { listenHandleRef.current?.stop(); }, []);
   // One Search Box session per dropdown lifecycle. Suggest+Retrieve pair share
   // it so we burn one session, not many. Rotated when the dropdown closes
   // for >30s — that's effectively a new search.
@@ -341,9 +380,25 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
         aria-expanded={open}
       />
       {loading && (
-        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+        <span className={`pointer-events-none absolute ${voiceAvailable ? 'right-12' : 'right-4'} top-1/2 -translate-y-1/2 text-xs text-slate-400`}>
           …
         </span>
+      )}
+      {voiceAvailable && (
+        <button
+          type="button"
+          onClick={listening ? stopVoice : startVoice}
+          aria-pressed={listening}
+          aria-label={listening ? 'Stop voice input' : 'Speak address'}
+          title={voiceError ?? (listening ? 'Listening… tap to cancel' : 'Speak address')}
+          className={`absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full transition ${
+            listening
+              ? 'bg-rose-600 text-white shadow ring-2 ring-rose-300 animate-pulse'
+              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+          }`}
+        >
+          <MicIcon size={14} />
+        </button>
       )}
       {open && (showLocateRow || features.length > 0) && (
         <ul
@@ -388,3 +443,13 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
     </div>
   );
 });
+
+function MicIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0" />
+      <path d="M12 18v3" />
+    </svg>
+  );
+}

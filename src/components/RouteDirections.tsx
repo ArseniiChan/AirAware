@@ -20,8 +20,10 @@ interface Props {
 export function RouteDirections({ steps, tone }: Props) {
   const locale = useLocale();
   const [speechReady, setSpeechReady] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  // Index of the step that has been spoken most recently. -1 = nothing yet.
+  const [currentIdx, setCurrentIdx] = useState<number>(-1);
+  // True while the synthesizer is actively producing audio for a step.
+  const [speaking, setSpeaking] = useState(false);
   const cancelledRef = useRef(false);
 
   // Voice list often populates async on Chrome/Safari. Wait once on mount
@@ -31,37 +33,58 @@ export function RouteDirections({ steps, tone }: Props) {
     waitForVoices().then(() => setSpeechReady(true));
   }, []);
 
-  // Cancel any in-flight narration on unmount or step swap.
+  // Cancel any in-flight narration on unmount or step swap. Reset index too —
+  // a new route deserves a fresh walk-through.
   useEffect(() => {
+    setCurrentIdx(-1);
+    setSpeaking(false);
     return () => { cancelledRef.current = true; cancelSpeech(); };
   }, [steps]);
 
-  async function play() {
-    if (!isSpeechAvailable() || playing) return;
+  async function speakStep(idx: number) {
+    if (!isSpeechAvailable() || speaking) return;
+    if (idx < 0 || idx >= steps.length) return;
     cancelledRef.current = false;
-    setPlaying(true);
-    for (let i = 0; i < steps.length; i++) {
-      if (cancelledRef.current) break;
-      setActiveIdx(i);
-      const distance = formatDistance(steps[i].distance_m);
-      // Wrap "in 200 ft" / "for 0.3 mi" into the spoken phrase. The Mapbox
-      // instruction already includes direction + street, so we just append
-      // distance as the prosody hint a real navigation app gives.
-      const phrase = `${steps[i].instruction} ${distance}.`;
+    setSpeaking(true);
+    setCurrentIdx(idx);
+    const distance = formatDistance(steps[idx].distance_m);
+    // Mapbox instruction already includes direction + street; append distance
+    // as the prosody hint a real navigation app gives.
+    const phrase = `${steps[idx].instruction} ${distance}.`;
+    try {
       await speak(phrase, locale);
+    } finally {
+      if (!cancelledRef.current) setSpeaking(false);
     }
-    if (!cancelledRef.current) setActiveIdx(null);
-    setPlaying(false);
   }
 
-  function stop() {
+  function next() {
+    speakStep(currentIdx + 1);
+  }
+  function restart() {
     cancelledRef.current = true;
     cancelSpeech();
-    setPlaying(false);
-    setActiveIdx(null);
+    setCurrentIdx(-1);
+    setSpeaking(false);
+  }
+  function repeat() {
+    if (currentIdx < 0) return;
+    cancelledRef.current = true;
+    cancelSpeech();
+    setSpeaking(false);
+    // Microtask gap so the previous utterance fully cancels before the next
+    // request — Safari sometimes drops the new one otherwise.
+    setTimeout(() => speakStep(currentIdx), 50);
   }
 
   if (!steps || steps.length === 0) return null;
+
+  const atEnd = currentIdx >= steps.length - 1;
+  const nextLabel = currentIdx < 0
+    ? `▶ Start directions`
+    : atEnd
+      ? `✓ End of route`
+      : `▶ Next step (${currentIdx + 2}/${steps.length})`;
 
   const accent =
     tone === 'standard'
@@ -80,25 +103,48 @@ export function RouteDirections({ steps, tone }: Props) {
           </span>
         </div>
         {speechReady && (
-          <button
-            type="button"
-            onClick={playing ? stop : play}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-              playing
-                ? 'bg-slate-900 text-white hover:bg-slate-700'
-                : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-            }`}
-            aria-pressed={playing}
-            aria-label={playing ? 'Stop narration' : 'Play directions out loud'}
-          >
-            {playing ? '◼ Stop' : '▶ Play directions'}
-          </button>
+          <div className="flex items-center gap-1.5">
+            {currentIdx >= 0 && !atEnd && (
+              <button
+                type="button"
+                onClick={repeat}
+                disabled={speaking}
+                className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                aria-label="Repeat current step"
+              >
+                ↻
+              </button>
+            )}
+            {currentIdx >= 0 && (
+              <button
+                type="button"
+                onClick={restart}
+                className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                aria-label="Restart directions from the beginning"
+              >
+                ⟲
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={atEnd ? restart : next}
+              disabled={speaking}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                atEnd
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              } disabled:opacity-60`}
+              aria-label={atEnd ? 'Start over from the first step' : 'Speak the next step'}
+            >
+              {speaking ? '🔊 Speaking…' : nextLabel}
+            </button>
+          </div>
         )}
       </header>
 
-      <ol className="mt-2 space-y-1">
+      <ol className="mt-2 space-y-1" aria-label="Turn-by-turn directions">
         {steps.map((s, i) => {
-          const isActive = activeIdx === i;
+          const isActive = currentIdx === i;
           return (
             <li
               key={i}

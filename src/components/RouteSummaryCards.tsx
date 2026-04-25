@@ -4,7 +4,8 @@
 // unhealthy air, and a small lifetime-impact estimate. Sits between the map
 // and the kid recommendation panel.
 
-import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps } from 'react';
+import { useLocale } from 'next-intl';
 import { useKidsStore } from '@/store/kids';
 import { useSavingsStore } from '@/store/savings';
 import {
@@ -14,6 +15,7 @@ import {
   lifeImpactForWalk,
 } from '@/lib/healthMath';
 import { walkSavings } from '@/lib/savings';
+import { isSpeechAvailable, speak, cancelSpeech } from '@/lib/voiceMode';
 import { ClockIcon, RulerIcon, StepsIcon } from '@/components/icons/Icons';
 import type { RouteOptions } from '@/lib/recommendation';
 import type { DemoRoutesPayload } from '@/lib/routesData';
@@ -55,6 +57,11 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
   const [showImpact, setShowImpact] = useState(false);
   const recordWalk = useSavingsStore((s) => s.recordWalk);
   const [logged, setLogged] = useState(false);
+  const locale = useLocale();
+  // Voice summary state: opt-in via the speaker button, persists across
+  // pair swaps so a blind user only has to enable it once per session.
+  const [voiceSummaryOn, setVoiceSummaryOn] = useState(false);
+  const lastSpokenKeyRef = useRef<string | null>(null);
 
   // Reset the "logged" flag whenever the underlying route pair changes —
   // each new computed route is its own opportunity to log a walk.
@@ -62,40 +69,108 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
     setLogged(false);
   }, [geo?.pair.id, exposure?.standard.avgAqi, exposure?.atlas.avgAqi]);
 
-  if (!geo || !exposure) return null;
+  // Derived per-route values. Computed early so the voice-summary effect can
+  // depend on them without violating rules-of-hooks (the early-return guard
+  // sits below all hook calls).
+  const std = geo && exposure
+    ? {
+        name: 'Standard',
+        color: 'red' as const,
+        distance_m: geo.routes.standard.distance_m,
+        duration_s: geo.routes.standard.duration_s,
+        exposure: exposure.standard,
+      }
+    : null;
+  const atlas = geo && exposure
+    ? {
+        name: 'AirAware',
+        color: 'green' as const,
+        distance_m: geo.routes.atlas.distance_m,
+        duration_s: geo.routes.atlas.duration_s,
+        exposure: exposure.atlas,
+      }
+    : null;
 
   // AirAware "wins" only if its average AQI is lower than Standard's. Avg AQI
   // is the fair air-quality metric (per-step concentration) — exposure-minutes
   // can be higher on a longer route even when the air is cleaner.
-  const atlasCleaner = exposure.atlas.avgAqi < exposure.standard.avgAqi - 1;
+  const atlasCleaner = !!exposure && exposure.atlas.avgAqi < exposure.standard.avgAqi - 1;
 
-  const std = {
-    name: 'Standard',
-    color: 'red' as const,
-    distance_m: geo.routes.standard.distance_m,
-    duration_s: geo.routes.standard.duration_s,
-    exposure: exposure.standard,
-  };
-  const atlas = {
-    name: 'AirAware',
-    color: 'green' as const,
-    distance_m: geo.routes.atlas.distance_m,
-    duration_s: geo.routes.atlas.duration_s,
-    exposure: exposure.atlas,
-  };
-
-  const addedMin = Math.max(
-    0,
-    Math.round((atlas.duration_s - std.duration_s) / 60),
-  );
+  const addedMin = std && atlas
+    ? Math.max(0, Math.round((atlas.duration_s - std.duration_s) / 60))
+    : 0;
   // Both routes through clean air (AQI < threshold along the entire walk).
-  // Air-quality message in this case is "good news, pick either" — not a
-  // missing recommendation.
-  const allClean = std.exposure.exposureMinutes === 0 && atlas.exposure.exposureMinutes === 0;
+  const allClean =
+    !!std && !!atlas &&
+    std.exposure.exposureMinutes === 0 &&
+    atlas.exposure.exposureMinutes === 0;
 
   const warningText = warningCopy(warning);
-  const savings = walkSavings(exposure);
-  const canLog = savings.atlasWins && (savings.avoidedAqiMinutes > 0 || savings.avoidedUnhealthyMinutes > 0);
+  const savings = exposure ? walkSavings(exposure) : null;
+  const canLog =
+    !!savings && savings.atlasWins &&
+    (savings.avoidedAqiMinutes > 0 || savings.avoidedUnhealthyMinutes > 0);
+
+  // Build a short spoken summary tailored to which banner is showing. Reads
+  // numbers (not raw AQI) so a screen-reader user gets the same takeaway as
+  // a sighted one — "this route is cleaner, take it."
+  const summary = (() => {
+    if (!std || !atlas || !exposure) return '';
+    const stdMin = Math.round(std.duration_s / 60);
+    const atlasMin = Math.round(atlas.duration_s / 60);
+    if (warningText) {
+      return `${warningText} Standard route is ${stdMin} minutes, ${formatDistance(std.distance_m)}.`;
+    }
+    if (allClean) {
+      return `Air looks good for this walk. Both routes are safe — pick whichever fits the day. Standard route is ${stdMin} minutes; AirAware route is ${atlasMin} minutes.`;
+    }
+    if (atlasCleaner) {
+      const delta = Math.round(std.exposure.avgAqi - atlas.exposure.avgAqi);
+      const extra = addedMin > 0 ? `, ${addedMin} extra ${addedMin === 1 ? 'minute' : 'minutes'} of walking` : '';
+      return `AirAware route is recommended. Averages ${delta} A-Q-I cleaner than the standard route${extra}. Total walk: ${atlasMin} minutes, ${formatDistance(atlas.distance_m)}.`;
+    }
+    return `Two routes available. Standard is ${stdMin} minutes, AirAware is ${atlasMin} minutes. Air quality is similar across both.`;
+  })();
+
+  const summaryKey = geo && exposure
+    ? `${geo.pair.id}|${Math.round(exposure.standard.avgAqi)}|${Math.round(exposure.atlas.avgAqi)}`
+    : '';
+
+  // Auto-speak the summary when the user has opted in AND the underlying
+  // numbers change. Dedupe via summaryKey so a re-render with identical data
+  // doesn't restart speech mid-utterance.
+  useEffect(() => {
+    if (!voiceSummaryOn || !summary) return;
+    if (!isSpeechAvailable()) return;
+    if (lastSpokenKeyRef.current === summaryKey) return;
+    lastSpokenKeyRef.current = summaryKey;
+    cancelSpeech();
+    speak(summary, locale);
+  }, [voiceSummaryOn, summaryKey, summary, locale]);
+
+  // If the user turns voice off, stop any in-flight speech immediately.
+  useEffect(() => {
+    if (!voiceSummaryOn) cancelSpeech();
+  }, [voiceSummaryOn]);
+
+  // Early return AFTER all hooks have been called. Prior bug: the early
+  // return sat above the voice-summary hooks, so toggling from null→data
+  // changed the hook count and React threw "Rendered more hooks than during
+  // the previous render."
+  if (!geo || !exposure || !std || !atlas || !savings) return null;
+
+  function toggleVoiceSummary() {
+    if (voiceSummaryOn) {
+      setVoiceSummaryOn(false);
+      return;
+    }
+    // Force-speak immediately on enable; clearing the key ensures the effect
+    // fires even if the same pair was previously narrated.
+    lastSpokenKeyRef.current = null;
+    setVoiceSummaryOn(true);
+  }
+
+  const voiceAvailable = isSpeechAvailable();
 
   return (
     <div className="space-y-2">
@@ -105,7 +180,11 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
           3. Engine warning → amber friendly explanation
           (Otherwise no banner — just the route cards.) */}
       {allClean && !warningText && (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900"
+        >
           <span className="font-semibold">Air looks good for this walk.</span>{' '}
           <span className="text-sky-700">
             Both routes are below the kid-asthma sensitivity threshold — pick whichever fits
@@ -115,7 +194,11 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
       )}
 
       {!allClean && atlasCleaner && !warningText && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <span className="font-semibold">
@@ -156,7 +239,11 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
       )}
 
       {warningText && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
           {warningText}
         </div>
       )}
@@ -184,7 +271,22 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
         >
           {showImpact ? '▾ Hide lifetime estimate' : '▸ Show lifetime estimate'}
         </button>
-        <MethodologyButton />
+        <div className="flex items-center gap-3">
+          {voiceAvailable && (
+            <button
+              type="button"
+              onClick={toggleVoiceSummary}
+              aria-pressed={voiceSummaryOn}
+              aria-label={voiceSummaryOn ? 'Stop reading route summary' : 'Read route summary aloud'}
+              className={`text-xs font-medium transition ${
+                voiceSummaryOn ? 'text-emerald-700 hover:text-emerald-900' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              {voiceSummaryOn ? '🔊 Reading summary' : '🔈 Read summary'}
+            </button>
+          )}
+          <MethodologyButton />
+        </div>
       </div>
     </div>
   );

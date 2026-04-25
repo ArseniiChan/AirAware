@@ -31,7 +31,7 @@ export function Scorecard() {
     >
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span aria-hidden className="text-base">🏆</span>
+          <LeafIcon />
           <h2 className="text-sm font-semibold text-slate-900">Your clean-air score</h2>
           {walks > 0 && (
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -103,6 +103,28 @@ export function Scorecard() {
         </div>
       )}
     </section>
+  );
+}
+
+// Stylized leaf — picks up on the emerald palette and the "clean air" frame
+// without trophy/medal connotations (this isn't a competition, it's a tally).
+function LeafIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-emerald-600"
+      aria-hidden
+    >
+      <path d="M11 20A7 7 0 0 1 4 13c0-5 4-9 13-9 0 9-4 16-9 16Z" />
+      <path d="M2 22c2-3 5-7 9-9" />
+    </svg>
   );
 }
 

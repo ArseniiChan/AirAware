@@ -134,7 +134,13 @@ export async function POST(req: NextRequest) {
     systemInstruction: SYSTEM_PROMPT,
   });
 
-  const history = body.messages.slice(0, -1).map((m) => ({
+  // Gemini's startChat({ history }) requires the first entry to be role:'user'.
+  // Our UI seeds the conversation with a model greeting; drop any leading
+  // non-user messages so the API call doesn't 500.
+  const rawHistory = body.messages.slice(0, -1);
+  const firstUserIdx = rawHistory.findIndex((m) => m.role === 'user');
+  const trimmedHistory = firstUserIdx === -1 ? [] : rawHistory.slice(firstUserIdx);
+  const history = trimmedHistory.map((m) => ({
     role: m.role,
     parts: [{ text: m.text }],
   }));

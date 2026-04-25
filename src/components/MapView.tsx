@@ -89,6 +89,10 @@ export function MapView({
   const mapRef = useRef<MapRef | null>(null);
   const [styleReady, setStyleReady] = useState(false);
   const [lightPreset, setLightPreset] = useState<LightPreset>(DEFAULT_LIGHT_PRESET);
+  // User-facing override of the heatmap visibility. Initialized from the prop
+  // (default-on) but flippable so the basemap is readable without the AQI
+  // wash drowning out streets and route polylines.
+  const [heatmapOn, setHeatmapOn] = useState<boolean>(showHeatmap);
   const [hovered, setHovered] = useState<{
     kind: RouteKind;
     lon: number;
@@ -234,7 +238,7 @@ export function MapView({
       >
         <NavigationControl position="top-right" showCompass={false} />
 
-        {showHeatmap && styleReady && <HeatmapLayer hour={heatmapHour} />}
+        {heatmapOn && styleReady && <HeatmapLayer hour={heatmapHour} />}
         {showPollutionSources && styleReady && <PollutionSourceLayer showLabels={false} />}
 
         {standardGeoJson && styleReady && (
@@ -339,18 +343,34 @@ export function MapView({
         )}
       </Map>
 
-      <button
-        type="button"
-        onClick={cycleLight}
-        className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur transition hover:bg-slate-900"
-        aria-label={`Lighting: ${lightPreset}. Tap to cycle.`}
-      >
-        {(() => {
-          const Icon = LIGHT_ICONS[lightPreset];
-          return <Icon size={14} />;
-        })()}
-        <span className="capitalize">{lightPreset}</span>
-      </button>
+      <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setHeatmapOn((v) => !v)}
+          className={
+            heatmapOn
+              ? 'inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-emerald-600/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur transition hover:bg-emerald-600'
+              : 'inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur transition hover:bg-slate-900'
+          }
+          aria-pressed={heatmapOn}
+          aria-label={heatmapOn ? 'Hide AQI heatmap' : 'Show AQI heatmap'}
+        >
+          <HazeIcon size={14} />
+          <span>{heatmapOn ? 'Heatmap on' : 'Heatmap off'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={cycleLight}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur transition hover:bg-slate-900"
+          aria-label={`Lighting: ${lightPreset}. Tap to cycle.`}
+        >
+          {(() => {
+            const Icon = LIGHT_ICONS[lightPreset];
+            return <Icon size={14} />;
+          })()}
+          <span className="capitalize">{lightPreset}</span>
+        </button>
+      </div>
     </div>
   );
 }
