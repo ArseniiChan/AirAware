@@ -67,40 +67,20 @@ export function TimeScrubber({ value, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-emerald-100 bg-white/70 p-4 shadow-sm backdrop-blur">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
-          {t('label')}
-        </span>
-        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
-          {t(value)}
-        </span>
-      </div>
-
+    <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-white/70 px-3 py-2 shadow-sm backdrop-blur">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+        {t('label')}
+      </span>
       <input
         type="time"
         value={time}
         onChange={(e) => handleTimeChange(e.target.value)}
         aria-label={t('label')}
-        className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-center text-base font-semibold tabular-nums text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
+        className="w-24 rounded-md border border-emerald-200 bg-white px-2 py-1 text-center text-sm font-semibold tabular-nums text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
       />
-
-      <div className="flex flex-wrap justify-between gap-1 text-[10px] uppercase tracking-wide">
-        {SLICES.map((slice) => (
-          <button
-            key={slice}
-            type="button"
-            onClick={() => onChange(slice)}
-            className={`rounded-full px-2 py-0.5 transition ${
-              value === slice
-                ? 'bg-emerald-600 text-white'
-                : 'text-slate-400 hover:text-slate-700'
-            }`}
-          >
-            {t(slice)}
-          </button>
-        ))}
-      </div>
+      <span className="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+        {t(value)}
+      </span>
     </div>
   );
 }
