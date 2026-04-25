@@ -1,0 +1,17 @@
+{
+  "_comment": "Subset of NYC ZCTAs the forecast pipeline pulls. Demo coverage > exhaustive coverage. Hero ZCTAs (10454, 10474) are first.",
+  "zctas": [
+    {"zip": "10454", "name": "Mott Haven", "borough": "Bronx",         "lat": 40.8084, "lon": -73.9171},
+    {"zip": "10474", "name": "Hunts Point","borough": "Bronx",         "lat": 40.8120, "lon": -73.8800},
+    {"zip": "10458", "name": "Fordham",    "borough": "Bronx",         "lat": 40.8500, "lon": -73.8800},
+    {"zip": "10463", "name": "Kingsbridge","borough": "Bronx",         "lat": 40.8600, "lon": -73.9300},
+    {"zip": "10024", "name": "Upper West Side","borough":"Manhattan",  "lat": 40.7831, "lon": -73.9712},
+    {"zip": "10001", "name": "Midtown",    "borough": "Manhattan",     "lat": 40.7484, "lon": -73.9857},
+    {"zip": "10009", "name": "East Village","borough":"Manhattan",     "lat": 40.7282, "lon": -73.9942},
+    {"zip": "11216", "name": "Bed-Stuy",   "borough": "Brooklyn",      "lat": 40.6782, "lon": -73.9442},
+    {"zip": "11226", "name": "Flatbush",   "borough": "Brooklyn",      "lat": 40.6500, "lon": -73.9500},
+    {"zip": "11373", "name": "Elmhurst",   "borough": "Queens",        "lat": 40.7400, "lon": -73.8800},
+    {"zip": "11432", "name": "Jamaica",    "borough": "Queens",        "lat": 40.7000, "lon": -73.7900},
+    {"zip": "10301", "name": "St. George", "borough": "Staten Island", "lat": 40.6447, "lon": -74.0784}
+  ]
+}

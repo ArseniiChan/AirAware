@@ -1,0 +1,17 @@
+{
+  "_comment": "Synthetic NYC AirNow observations used when AIRNOW_API_KEY is unset. Values chosen to produce a believable demo: Bronx hot, Manhattan moderate, outer boroughs cleaner.",
+  "sensors": [
+    {"lat": 40.8084, "lon": -73.9171, "aqi": 138, "parameter": "PM2.5", "zip": "10454", "name": "Mott Haven"},
+    {"lat": 40.8120, "lon": -73.8800, "aqi": 145, "parameter": "PM2.5", "zip": "10474", "name": "Hunts Point"},
+    {"lat": 40.8500, "lon": -73.8800, "aqi": 118, "parameter": "PM2.5", "zip": "10458", "name": "Fordham"},
+    {"lat": 40.8600, "lon": -73.9300, "aqi": 102, "parameter": "PM2.5", "zip": "10463", "name": "Kingsbridge"},
+    {"lat": 40.7831, "lon": -73.9712, "aqi": 78,  "parameter": "PM2.5", "zip": "10024", "name": "Upper West Side"},
+    {"lat": 40.7484, "lon": -73.9857, "aqi": 88,  "parameter": "OZONE","zip": "10001", "name": "Midtown"},
+    {"lat": 40.7282, "lon": -73.9942, "aqi": 92,  "parameter": "PM2.5", "zip": "10009", "name": "East Village"},
+    {"lat": 40.6782, "lon": -73.9442, "aqi": 74,  "parameter": "PM2.5", "zip": "11216", "name": "Bed-Stuy"},
+    {"lat": 40.6500, "lon": -73.9500, "aqi": 68,  "parameter": "PM2.5", "zip": "11226", "name": "Flatbush"},
+    {"lat": 40.7128, "lon": -73.8500, "aqi": 82,  "parameter": "PM2.5", "zip": "11373", "name": "Elmhurst"},
+    {"lat": 40.7400, "lon": -73.7700, "aqi": 65,  "parameter": "PM2.5", "zip": "11432", "name": "Jamaica"},
+    {"lat": 40.5795, "lon": -74.1502, "aqi": 55,  "parameter": "PM2.5", "zip": "10301", "name": "St. George"}
+  ]
+}
