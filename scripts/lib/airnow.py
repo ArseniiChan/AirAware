@@ -2,15 +2,18 @@
 
 When AIRNOW_API_KEY is unset, all calls read from `scripts/fixtures/`:
   - airnow_observations.json  (current-AQI sensors)
-  - airnow_forecast.json      (per-ZCTA 24h forecasts)
+  - airnow_forecast.json      (per-ZCTA reference 24h shape; anchor = max)
 
 Live calls hit:
   - https://www.airnowapi.org/aq/observation/zipCode/current
   - https://www.airnowapi.org/aq/forecast/zipCode
 
+AirNow's forecast endpoint returns DAILY peak AQI per pollutant per day, NOT
+24 hourly values. So `forecast_anchor()` extracts the day's peak AQI; the
+within-day shape comes from `lib.diurnal.diurnal_forecast()`.
+
 Free tier: 500 req/hr per key. Client tracks calls and raises RuntimeError
-once the safety threshold is reached, so a runaway batch script can't burn
-the team's quota in the middle of the demo.
+once the safety threshold is reached.
 """
 
 import json
@@ -20,6 +23,18 @@ from pathlib import Path
 CURRENT_URL = "https://www.airnowapi.org/aq/observation/zipCode/current/"
 FORECAST_URL = "https://www.airnowapi.org/aq/forecast/zipCode/"
 DEFAULT_RATE_LIMIT = 450  # leave 50 req/hr headroom under AirNow's 500
+
+
+def _normalize_observation(raw):
+    """Map AirNow's live response shape to our internal {lat, lon, aqi, parameter} shape."""
+    if "Latitude" in raw:
+        return {
+            "lat": raw["Latitude"],
+            "lon": raw["Longitude"],
+            "aqi": int(raw.get("AQI", 0)),
+            "parameter": raw.get("ParameterName", "PM2.5"),
+        }
+    return raw
 
 
 class AirNowClient:
@@ -49,11 +64,11 @@ class AirNowClient:
             )
 
     def current_observations(self, zip_code, distance=5):
+        """Return a list of {lat, lon, aqi, parameter} dicts near `zip_code`."""
         self._check_rate()
         if self.is_offline:
             data = self._load_fixture("airnow_observations.json")
             return data["sensors"]
-        # Live path — kept simple; ingest scripts handle errors at the call site.
         import requests
         params = {
             "format": "application/json",
@@ -63,13 +78,21 @@ class AirNowClient:
         }
         r = requests.get(CURRENT_URL, params=params, timeout=15)
         r.raise_for_status()
-        return r.json()
+        return [_normalize_observation(item) for item in r.json()]
 
-    def forecast(self, zip_code, date):
+    def forecast_anchor(self, zip_code, date):
+        """Return the daily peak AQI (int) forecast for `zip_code` on `date`, or None.
+
+        AirNow's live forecast endpoint returns one entry per pollutant per day.
+        We take the max AQI across pollutants for that day as the diurnal anchor.
+        """
         self._check_rate()
         if self.is_offline:
             data = self._load_fixture("airnow_forecast.json")
-            return data.get(zip_code)  # None if not present → caller falls back
+            shape = data.get(zip_code)
+            if shape is None or not isinstance(shape, list):
+                return None
+            return max(shape)
         import requests
         params = {
             "format": "application/json",
@@ -79,4 +102,8 @@ class AirNowClient:
         }
         r = requests.get(FORECAST_URL, params=params, timeout=15)
         r.raise_for_status()
-        return r.json()
+        rows = r.json()
+        same_day = [row for row in rows if row.get("DateForecast") == date]
+        if not same_day:
+            return None
+        return max(int(row.get("AQI", 0)) for row in same_day)

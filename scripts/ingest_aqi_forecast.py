@@ -12,6 +12,7 @@ Run:
 
 import argparse
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -35,41 +36,38 @@ def _load_overrides():
 
 
 def _current_aqi_for_zip(client, zcta):
-    """Best-effort current AQI for a ZIP — used to anchor the diurnal fallback."""
+    """Best-effort current AQI for a ZIP — used as a final-fallback anchor."""
     try:
         sensors = client.current_observations(zip_code=zcta["zip"], distance=10)
     except Exception:
         sensors = []
-    matched = [s for s in sensors if s.get("zip") == zcta["zip"]]
-    if matched:
-        return matched[0]["aqi"]
-    # No exact match — use closest by lat/lon among returned sensors.
     if sensors:
         return sensors[0]["aqi"]
     return 80  # generic NYC moderate baseline
 
 
 def _forecast_for_zcta(client, zcta, generated_at):
-    """Returns (24-int list, source-string)."""
+    """Build a 24h forecast curve for the ZCTA.
+
+    AirNow's forecast endpoint returns DAILY peak AQI per pollutant — we use the
+    day's max as the diurnal anchor. The within-day shape always comes from
+    `diurnal_forecast()`.
+
+    Returns (24-int list, source-string).
+    """
+    anchor = None
+    source = "diurnal_fallback"
     try:
-        live = client.forecast(zip_code=zcta["zip"], date=generated_at.date().isoformat())
+        anchor = client.forecast_anchor(zip_code=zcta["zip"], date=generated_at.date().isoformat())
     except Exception:
-        live = None
+        anchor = None
 
-    if live and len(live) >= 24:
-        # Live AirNow returns full 24h
-        if isinstance(live[0], dict):
-            values = [int(round(item.get("AQI", 0))) for item in live[:24]]
-        else:
-            values = list(live[:24])
-        # Rotate so index 0 = generated_at hour
-        h = generated_at.hour
-        rotated = values[h:] + values[:h]
-        return rotated, "airnow_forecast"
+    if anchor is not None:
+        source = "airnow_forecast"  # AirNow gave us the daily peak; diurnal shapes the hour curve
+    else:
+        anchor = _current_aqi_for_zip(client, zcta)
 
-    # Fallback path
-    anchor = _current_aqi_for_zip(client, zcta)
-    return diurnal_forecast(current_aqi=anchor, current_hour=generated_at.hour), "diurnal_fallback"
+    return diurnal_forecast(current_aqi=anchor, current_hour=generated_at.hour), source
 
 
 def _apply_overrides(values, source, overrides_for_zip):
@@ -122,8 +120,12 @@ def build_forecast_payload(client, zctas, overrides, generated_at):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--demo-snapshot", action="store_true",
+                        help="Force offline-fixture mode even if AIRNOW_API_KEY is set.")
     args = parser.parse_args()
 
+    if args.demo_snapshot:
+        os.environ.pop("AIRNOW_API_KEY", None)
     client = AirNowClient()
     print(f"AirNow client: {'OFFLINE (fixtures)' if client.is_offline else 'LIVE'}")
 

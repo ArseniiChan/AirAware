@@ -21,17 +21,33 @@ pip install -r requirements.txt
 ## Run the pipeline
 
 ```bash
-# Offline (fixture data — works without any API key, demo-safe)
+# Live (real EPA AirNow current + forecast)
+# Source the env file (key lives in .env.local, gitignored)
+set -a; . ../.env.local; set +a
 python ingest_aqi.py
 python ingest_aqi_forecast.py
 
-# Live (real EPA AirNow data)
-export AIRNOW_API_KEY=your_key_here
+# Demo snapshot (synthetic Bronx-hot data, ignores live API even if key is set)
+python ingest_aqi.py --demo-snapshot
+python ingest_aqi_forecast.py --demo-snapshot
+
+# Offline (no key set, fixtures only)
+unset AIRNOW_API_KEY
 python ingest_aqi.py
 python ingest_aqi_forecast.py
 ```
 
 Both scripts write into `public/data/`.
+
+### When to use which mode
+
+| Mode | When | Why |
+|---|---|---|
+| **Live** | Saturday rehearsal, technical-judge probing | Real EPA data — proves the pipeline works against reality |
+| **--demo-snapshot** | The committed asset for the stage demo | NYC air may be uniformly clean on demo day (real AirNow today: AQI 34-35 across 5 boroughs); the heatmap loses its "Bronx is hot" narrative without synthetic high-pollution data. Plan §8.4 anticipates this — historical worst-case snapshot with a small label is honest and demo-readable. |
+| **Offline** | First-time clones, testing without keys | Fixtures only; equivalent to --demo-snapshot |
+
+The hero forecast flip lands the same way in all three modes because hand-tuned overrides (`fixtures/forecast_overrides.json`) are applied last in the forecast pipeline regardless of source.
 
 ### Tuning grid spacing
 

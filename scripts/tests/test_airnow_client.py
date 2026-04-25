@@ -24,17 +24,47 @@ class TestOfflineFallback:
         b = client.current_observations(zip_code="10024")
         assert a == b
 
-    def test_offline_forecast_returns_24_hourly_values(self):
+    def test_offline_forecast_anchor_returns_int_for_known_zip(self):
         client = AirNowClient(api_key=None, fixture_dir=FIXTURE_DIR)
-        hourly = client.forecast(zip_code="10024", date="2026-04-25")
-        assert len(hourly) == 24
-        assert all(isinstance(v, int) for v in hourly)
+        anchor = client.forecast_anchor(zip_code="10024", date="2026-04-25")
+        assert isinstance(anchor, int)
+        assert 0 < anchor < 500
 
-    def test_offline_forecast_for_unknown_zip_returns_none(self):
-        # Hero ZIPs (10454/10474) intentionally not in fixture so the diurnal
-        # fallback runs — None signals "not available, use fallback".
+    def test_offline_forecast_anchor_uses_daily_peak(self):
+        # The fixture for 10024 has a 24h shape; the anchor should be the max.
         client = AirNowClient(api_key=None, fixture_dir=FIXTURE_DIR)
-        assert client.forecast(zip_code="10454", date="2026-04-25") is None
+        anchor = client.forecast_anchor(zip_code="10024", date="2026-04-25")
+        # Fixture's 10024 peaks at 98 (morning rush)
+        assert anchor == 98
+
+    def test_offline_forecast_anchor_for_unknown_zip_returns_none(self):
+        # Hero ZIPs (10454/10474) intentionally absent → None signals fallback.
+        client = AirNowClient(api_key=None, fixture_dir=FIXTURE_DIR)
+        assert client.forecast_anchor(zip_code="10454", date="2026-04-25") is None
+
+
+class TestNormalization:
+    def test_live_shape_normalized_to_lat_lon_aqi(self):
+        # Simulate AirNow's live response shape: capitalized field names.
+        from lib.airnow import _normalize_observation
+        live_record = {
+            "DateObserved": "2026-04-25",
+            "Latitude": 40.8419,
+            "Longitude": -73.8359,
+            "ParameterName": "PM2.5",
+            "AQI": 87,
+            "Category": {"Name": "Moderate"},
+        }
+        result = _normalize_observation(live_record)
+        assert result["lat"] == 40.8419
+        assert result["lon"] == -73.8359
+        assert result["aqi"] == 87
+        assert result["parameter"] == "PM2.5"
+
+    def test_fixture_shape_passes_through_unchanged(self):
+        from lib.airnow import _normalize_observation
+        fixture_record = {"lat": 40.7, "lon": -74.0, "aqi": 50, "parameter": "O3"}
+        assert _normalize_observation(fixture_record) == fixture_record
 
 
 class TestRateLimitGuard:
