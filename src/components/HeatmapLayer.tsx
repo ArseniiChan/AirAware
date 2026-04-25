@@ -122,40 +122,27 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
         type="fill"
         slot="bottom"
         paint={{
-          // Continuous hue ramp — every AQI integer maps to its own shade.
-          // 16 stops give visible perceptual difference between, say, AQI
-          // 87 and AQI 92, instead of binary band jumps.
           'fill-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
-             0,   '#fef9c3', // very pale yellow
-            20,   '#fef08a',
-            40,   '#fde047',
-            55,   '#facc15',
-            70,   '#fbbf24', // gold
-            85,   '#f59e0b',
-           100,   '#fb923c', // orange
-           115,   '#f97316',
-           130,   '#ea580c',
-           145,   '#ef4444', // red
-           160,   '#dc2626',
-           175,   '#b91c1c',
-           195,   '#991b1b',
-           220,   '#7f1d1d', // deep red
-           260,   '#65141d',
-           320,   '#4c0519', // hazardous
+             0,   '#86efac', // good
+            50,   '#fde047', // moderate
+           100,   '#fb923c', // sensitive
+           150,   '#ef4444', // unhealthy
+           200,   '#7f1d1d', // very unhealthy
           ],
-          // Floor opacity 0.32 so the cleanest blocks are still visibly
-          // tinted (NYCCAS-style — no transparent gaps). Steep ramp through
-          // the middle so contrast is loud where it matters.
+          // Steep AQI-driven opacity — clean blocks fade into the basemap,
+          // dirty blocks dominate. No floor (avoids the citywide tint that
+          // smeared into Bronx + Manhattan looking the same).
           'fill-opacity': [
             'interpolate', ['linear'], ['get', 'aqi'],
-            0,    0.32,
-            40,   0.40,
-            70,   0.52,
-            95,   0.65,
-            120,  0.78,
-            140,  0.86,
-            180,  0.92,
+            0,    0.0,
+            45,   0.05,
+            65,   0.18,
+            85,   0.35,
+            105,  0.55,
+            125,  0.72,
+            150,  0.85,
+            200,  0.92,
           ],
           'fill-antialias': false,
         }}

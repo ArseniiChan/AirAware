@@ -47,8 +47,9 @@
   "languageToggle": "Language",
   "outsideNyc": "We currently cover the 5 boroughs of NYC. Try one of these Bronx walks:",
   "landing": {
+    "returning": "Returning?",
     "eyebrow": "Asthma-aware navigation · NYC",
-    "tagline": "Like Google Maps — but it knows your kid has asthma.",
+    "tagline": "A maps app that actually accounts for your health.",
     "cta": "Get Started",
     "ctaHint": "No login. Type two addresses. Built for the Bronx, works across NYC.",
     "feature1Title": "Cleaner routes",
