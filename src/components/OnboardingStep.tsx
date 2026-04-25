@@ -1,7 +1,8 @@
 'use client';
 
-import { type FormEvent, type ReactNode, useEffect, useRef } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { AddressAutocomplete, type AddressPick } from './AddressAutocomplete';
+import { GeolocateError, locateMe } from '@/lib/geolocate';
 
 interface Props {
   step: 1 | 2;
@@ -16,12 +17,17 @@ interface Props {
   onSubmit: () => void;
   onBack?: () => void;
   presets?: { label: string; value: string; pick?: AddressPick }[];
+  /** Recent picks (most-recent first) — rendered as small chips ABOVE presets. */
+  recentPicks?: AddressPick[];
   /** When provided, the input becomes a Mapbox autocomplete and `onPick` fires
    *  with [lon, lat] when the user selects a suggestion (or a preset with
    *  baked coordinates). */
   onPick?: (pick: AddressPick) => void;
   /** Display-only: a small confirmation chip when a coordinate is locked. */
   pickedName?: string;
+  /** Show "📍 Use my location". Step 1 (origin) only — destination geolocate
+   *  doesn't make sense semantically. */
+  showGeolocate?: boolean;
 }
 
 export function OnboardingStep({
@@ -37,10 +43,15 @@ export function OnboardingStep({
   onSubmit,
   onBack,
   presets,
+  recentPicks,
   onPick,
   pickedName,
+  showGeolocate = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [geoState, setGeoState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [geoError, setGeoError] = useState<string | null>(null);
+
   useEffect(() => {
     inputRef.current?.focus();
   }, [step]);
@@ -49,6 +60,25 @@ export function OnboardingStep({
     event.preventDefault();
     if (!value.trim()) return;
     onSubmit();
+  }
+
+  async function handleGeolocate() {
+    if (!onPick) return;
+    setGeoState('loading');
+    setGeoError(null);
+    try {
+      const pick = await locateMe();
+      onChange(pick.name);
+      onPick(pick);
+      setGeoState('idle');
+    } catch (err) {
+      const msg =
+        err instanceof GeolocateError
+          ? err.message
+          : 'Could not get your location.';
+      setGeoError(msg);
+      setGeoState('error');
+    }
   }
 
   return (
@@ -88,6 +118,7 @@ export function OnboardingStep({
               onPick={onPick}
               placeholder={placeholder}
               locked={!!pickedName && pickedName === value}
+              presetValues={presets?.map((p) => p.value)}
               className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left text-lg shadow-lg shadow-emerald-100 outline-none ring-emerald-400 transition focus:ring-4"
             />
           ) : (
@@ -104,6 +135,47 @@ export function OnboardingStep({
             <p className="text-center text-xs font-medium text-emerald-700">
               ✓ Address pinned
             </p>
+          )}
+
+          {showGeolocate && onPick && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={handleGeolocate}
+                disabled={geoState === 'loading'}
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+              >
+                <span aria-hidden>📍</span>
+                {geoState === 'loading' ? 'Locating…' : 'Use my location'}
+              </button>
+              {geoError && (
+                <p className="mt-1.5 text-[11px] text-amber-700">{geoError}</p>
+              )}
+            </div>
+          )}
+
+          {recentPicks && recentPicks.length > 0 && (
+            <div>
+              <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Recent
+              </p>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {recentPicks.map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => {
+                      onChange(p.name);
+                      if (onPick) onPick(p);
+                    }}
+                    className="max-w-[14rem] truncate rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
+                    title={p.name}
+                  >
+                    {p.name.split(',')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
           {presets && presets.length > 0 && (

@@ -80,19 +80,90 @@ export function RouteSummaryCards({ geo, exposure }: Props) {
         <RouteCard
           route={atlas}
           kid={activeKid}
-          highlight
+          highlight={exposureSavedMin > 0}
           showImpact={showImpact}
         />
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setShowImpact((v) => !v)}
+          className="text-xs font-medium text-slate-500 hover:text-slate-900"
+        >
+          {showImpact ? '▾ Hide lifetime estimate' : '▸ Show lifetime estimate'}
+        </button>
+        <MethodologyButton />
+      </div>
+    </div>
+  );
+}
+
+function MethodologyButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
       <button
         type="button"
-        onClick={() => setShowImpact((v) => !v)}
-        className="text-xs font-medium text-slate-500 hover:text-slate-900"
+        onClick={() => setOpen(true)}
+        className="text-xs font-medium text-emerald-700 underline-offset-2 hover:underline"
       >
-        {showImpact ? '▾ Hide lifetime estimate' : '▸ Show lifetime estimate'}
+        How is the cleaner route picked?
       </button>
-    </div>
+      {open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="max-w-md space-y-3 rounded-2xl border border-emerald-100 bg-white p-5 text-sm text-slate-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-slate-900">How AirAware picks routes</h3>
+            <ol className="list-decimal space-y-2 pl-5 text-[13px] leading-relaxed">
+              <li>
+                <span className="font-semibold">Standard route</span> = Mapbox&rsquo;s most direct
+                walking path, what Google Maps would show.
+              </li>
+              <li>
+                We try <span className="font-semibold">18 detour candidates</span> by injecting a
+                waypoint perpendicular to the corridor at 3 distances × 2 sides × 3 positions
+                along the route.
+              </li>
+              <li>
+                Every candidate is sampled every 50 m against a 60,000-cell, 200 m AQI grid
+                covering the 5 boroughs (EPA AirNow + PurpleAir).
+              </li>
+              <li>
+                The winner is the candidate with the{' '}
+                <span className="font-semibold">fewest minutes through unhealthy air</span>{' '}
+                (AQI ≥ 100) — not the lowest average AQI. A longer detour through moderate air
+                can have <em>more</em> total bad-air minutes than a shorter one through a brief
+                hot spot, so we rank by what your body actually breathes.
+              </li>
+              <li>
+                Ties broken by: lower average AQI, then the most visibly different geometry on
+                the map.
+              </li>
+              <li>
+                If <span className="font-semibold">no detour beats the standard</span> on bad-air
+                minutes, AirAware says so and the savings line disappears. We won&rsquo;t fake a
+                win.
+              </li>
+            </ol>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

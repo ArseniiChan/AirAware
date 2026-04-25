@@ -88,25 +88,28 @@ export function HeatmapLayer() {
             10, 0.7,
             14, 1.4,
           ],
+          // Toned down so the route polylines are the visual hero. We only
+          // start tinting the basemap once heatmap-density crosses 0.25, and
+          // alpha values are capped at 0.45 even at hazardous AQI.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
-            0,    'rgba(34,197,94,0)',     // transparent
-            0.15, 'rgba(132,204,22,0.35)', // good (EPA green)
-            0.35, 'rgba(250,204,21,0.55)', // moderate (yellow)
-            0.55, 'rgba(249,115,22,0.65)', // sensitive (orange)
-            0.75, 'rgba(220,38,38,0.7)',   // unhealthy (red)
-            1.0,  'rgba(127,29,29,0.75)',  // hazardous (deep red)
+            0,    'rgba(34,197,94,0)',
+            0.20, 'rgba(132,204,22,0)',
+            0.35, 'rgba(250,204,21,0.20)', // moderate (yellow)
+            0.55, 'rgba(249,115,22,0.30)', // sensitive (orange)
+            0.75, 'rgba(220,38,38,0.38)',  // unhealthy (red)
+            1.0,  'rgba(127,29,29,0.45)',  // hazardous (deep red)
           ],
           'heatmap-radius': [
             'interpolate', ['linear'], ['zoom'],
-            10, 14,
-            13, 24,
-            15, 36,
+            10, 12,
+            13, 20,
+            15, 30,
           ],
           'heatmap-opacity': [
             'interpolate', ['linear'], ['zoom'],
-            10, 0.85,
-            14, 0.7,
+            10, 0.55,
+            14, 0.45,
             15, 0,
           ],
         }}
@@ -126,7 +129,8 @@ export function HeatmapLayer() {
           'circle-opacity': [
             'interpolate', ['linear'], ['zoom'],
             13, 0,
-            14, 0.55,
+            14, 0.32,
+            16, 0.4,
           ],
           'circle-color': [
             'interpolate', ['linear'], ['get', 'aqi'],

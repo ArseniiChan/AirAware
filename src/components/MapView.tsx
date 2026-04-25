@@ -37,8 +37,11 @@ interface Props {
   showHeatmap?: boolean;
 }
 
-const STANDARD_RED = '#dc2626';
-const ATLAS_GREEN = '#16a34a';
+const STANDARD_RED = '#ef4444';
+const ATLAS_GREEN = '#22c55e';
+// Casing flips dark↔light by light preset so polylines never disappear into
+// a navy basemap at dusk/night.
+const DARK_PRESETS = new Set<LightPreset>(['dusk', 'night']);
 
 const LIGHT_CYCLE: LightPreset[] = ['dawn', 'day', 'dusk', 'night'];
 const LIGHT_LABEL: Record<LightPreset, string> = {
@@ -144,6 +147,12 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
     setLightPreset(LIGHT_CYCLE[(i + 1) % LIGHT_CYCLE.length]);
   }
 
+  const isDarkBasemap = DARK_PRESETS.has(lightPreset);
+  // White outline at day/dawn; bright glow ring at dusk/night.
+  const casingColor = isDarkBasemap ? '#0f172a' : '#ffffff';
+  const casingWidth = isDarkBasemap ? 11 : 9;
+  const casingOpacity = isDarkBasemap ? 0.6 : 0.85;
+
   return (
     <div className="relative h-full w-full">
       <Map
@@ -178,9 +187,10 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
               type="line"
               slot="middle"
               paint={{
-                'line-color': '#ffffff',
-                'line-width': 9,
-                'line-opacity': 0.85,
+                'line-color': casingColor,
+                'line-width': casingWidth,
+                'line-opacity': casingOpacity,
+                'line-blur': isDarkBasemap ? 3 : 0,
               }}
               layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             />
@@ -190,8 +200,8 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
               slot="middle"
               paint={{
                 'line-color': STANDARD_RED,
-                'line-width': 5,
-                'line-opacity': 0.95,
+                'line-width': isDarkBasemap ? 6 : 5,
+                'line-opacity': 1.0,
               }}
               layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             />
@@ -205,9 +215,10 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
               type="line"
               slot="middle"
               paint={{
-                'line-color': '#ffffff',
-                'line-width': 9,
-                'line-opacity': 0.85,
+                'line-color': casingColor,
+                'line-width': casingWidth,
+                'line-opacity': casingOpacity,
+                'line-blur': isDarkBasemap ? 3 : 0,
               }}
               layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             />
@@ -217,8 +228,8 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
               slot="middle"
               paint={{
                 'line-color': ATLAS_GREEN,
-                'line-width': 5,
-                'line-opacity': 0.95,
+                'line-width': isDarkBasemap ? 6 : 5,
+                'line-opacity': 1.0,
               }}
               layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             />

@@ -40,13 +40,18 @@ interface Props {
   /** Set when the parent has already locked a coordinate (e.g. via preset).
    *  Suppresses the suggestion dropdown until the user types again. */
   locked?: boolean;
+  /** Values that should suppress the dropdown (e.g. preset chip values). When
+   *  the input value exactly equals any of these, no suggestions fetch — the
+   *  user obviously meant the preset, not a search. Demo-critical: without
+   *  this, the dropdown intercepts the submit button click. */
+  presetValues?: readonly string[];
 }
 
 const DEBOUNCE_MS = 220;
 const MIN_QUERY = 3;
 
 export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function AddressAutocomplete(
-  { value, onChange, onPick, placeholder, className, locked = false },
+  { value, onChange, onPick, placeholder, className, locked = false, presetValues },
   ref,
 ) {
   const [features, setFeatures] = useState<Feature[]>([]);
@@ -61,6 +66,12 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
     if (locked) return;
     const q = value.trim();
     if (q.length < MIN_QUERY) {
+      setFeatures([]);
+      setOpen(false);
+      return;
+    }
+    // Preset chip was clicked — don't second-guess the user with suggestions.
+    if (presetValues && presetValues.includes(value)) {
       setFeatures([]);
       setOpen(false);
       return;

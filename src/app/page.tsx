@@ -13,6 +13,8 @@ import { RouteSummaryCards } from '@/components/RouteSummaryCards';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
+import { loadWeather, captionForSlice } from '@/lib/weatherData';
+import { loadRecentPicks, rememberPick } from '@/lib/recentPicks';
 import type { RouteOptions } from '@/lib/recommendation';
 
 type Step = 'landing' | 'from' | 'to' | 'computing' | 'results';
@@ -57,7 +59,14 @@ export default function HomePage() {
   const [geoRoutes, setGeoRoutes] = useState<DemoRoutesPayload | null>(null);
   const [liveBase, setLiveBase] = useState<RouteOptions | null>(null);
   const [forecast, setForecast] = useState<AqiForecast | null>(null);
+  const [weather, setWeather] = useState<Awaited<ReturnType<typeof loadWeather>> | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [recentPicks, setRecentPicks] = useState<AddressPick[]>([]);
+
+  // Hydrate recent picks from localStorage on mount.
+  useEffect(() => {
+    setRecentPicks(loadRecentPicks());
+  }, []);
 
   const isHero = isHeroPair(from, to);
 
@@ -78,15 +87,24 @@ export default function HomePage() {
     return liveBase;
   }, [step, isHero, timeSlice, liveBase, forecast]);
 
-  // Load the forecast once on mount so the scrubber is responsive immediately
-  // when the user reaches results.
+  // Load the forecast + weather once on mount so the scrubber is responsive
+  // immediately when the user reaches results.
   useEffect(() => {
     let cancelled = false;
     loadForecast()
       .then((f) => { if (!cancelled) setForecast(f); })
       .catch((err) => { console.error('forecast load failed', err); });
+    loadWeather()
+      .then((w) => { if (!cancelled) setWeather(w); })
+      .catch((err) => { console.error('weather load failed', err); });
     return () => { cancelled = true; };
   }, []);
+
+  // Slice-aware caption ("44°F · 8 mph · Air clears as wind rises…").
+  const weatherCaption = useMemo(
+    () => (weather ? captionForSlice(weather, timeSlice) : null),
+    [weather, timeSlice],
+  );
 
   // On entering results, fetch route geometry. Hero pair → static fixture,
   // anything else → /api/route. Captures live exposure into `liveBase` so
@@ -183,11 +201,18 @@ export default function HomePage() {
         helper="Your home, your block, your stoop. We'll start there."
         value={from}
         onChange={setFrom}
-        onPick={(p) => { setFrom(p.name); setFromPick(p); }}
+        onPick={(p) => {
+          setFrom(p.name);
+          setFromPick(p);
+          rememberPick(p);
+          setRecentPicks(loadRecentPicks());
+        }}
         pickedName={fromPick?.name}
         placeholder="123 Hunts Point Ave, Bronx"
         ctaLabel="Next"
         onSubmit={() => setStep('to')}
+        showGeolocate
+        recentPicks={recentPicks}
         presets={[
           { label: 'Hero: Hunts Point Ave', value: HERO_FROM, pick: HERO_FROM_PICK },
           ...BACKUP_FROM_PRESETS,
@@ -206,8 +231,14 @@ export default function HomePage() {
         helper="School, the park, the bodega. Anywhere."
         value={to}
         onChange={setTo}
-        onPick={(p) => { setTo(p.name); setToPick(p); }}
+        onPick={(p) => {
+          setTo(p.name);
+          setToPick(p);
+          rememberPick(p);
+          setRecentPicks(loadRecentPicks());
+        }}
         pickedName={toPick?.name}
+        recentPicks={recentPicks}
         placeholder="PS 48 — 1290 Spofford Ave, Bronx"
         ctaLabel="Find clean route"
         onSubmit={() => {
@@ -311,7 +342,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-3">
-            <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
+            <TimeScrubber value={timeSlice} onChange={setTimeSlice} weather={weatherCaption} />
           </div>
         </div>
 
