@@ -30,7 +30,7 @@ Mobile-first responsive web app for NYC parents. Story = storyteller's real scho
 - **Block-level historical context card** (loads FIRST, before routes): on origin geocode, show *"About 1 in 24 kids on your block went to the ER for asthma last year. That's 4.5× the NYC average."* Source: NYC DOHMH "Asthma ED Visit Rate by ZCTA" (ZCTA = ZIP Code Tabulation Area; aggregate of SPARCS, since raw SPARCS rows aren't publicly available)
 - **Time-scrubber** on recommendation panel: slider (now → noon → 4pm → 6pm → tomorrow morning). Each kid's recommendation re-renders as slider moves. **Powered by EPA AirNow's published forecast endpoint** (no custom ML training). Diurnal-pattern fallback if forecast endpoint returns nothing for a ZIP. Hero moment.
 - Digestible copy throughout: 🟢/🟡/🟠/🔴 labels + plain language. "0 minutes through unhealthy air" not "avg AQI 87." Raw numbers behind a "details" expander
-- **EN + ES toggle** (`next-intl`, header chip 🌐). User-controlled, no auto-detect. ES translated by Claude batch, reviewed by A or a pre-committed native speaker
+- **EN + ES toggle** (`next-intl`, header chip 🌐). User-controlled, no auto-detect. ES translated by Gemini batch, reviewed by A or a pre-committed native speaker
 - Hero scenario w/ 2 pre-loaded kids ("Maya, 7, severe" + "Diego, 11, mild"), storyteller's real Bronx home → real elementary school. Recommendations come out *opposite* on demo day. Hand-tuned.
 - Static QR code on title slide → live Vercel URL
 - Offline-safe demo mode: demo phone bypasses every live API; routes + AQI + forecasts pre-computed to JSON for hero scenario
@@ -38,7 +38,7 @@ Mobile-first responsive web app for NYC parents. Story = storyteller's real scho
 ### NICE-TO-HAVE
 - Trained XGBoost forecasting model (90 days AirNow + NWS weather features), swapped behind the scrubber after H14 if MUST-HAVEs are green. README gets held-out MAE for technical judges. If it doesn't ship, scrubber still works on EPA forecast.
 - **+1 stretch language** (Bengali specifically — BASTA / Riyuan Liu angle). Hard rule: ships only if a Bengali speaker is locked in advance (teammate's family on FaceTime, named friend at venue). No floor-recruiting.
-- Claude per-kid 3-sentence explanations × (kid × scenario × locale), pre-generated, cached
+- Gemini per-kid 3-sentence explanations × (kid × scenario × locale), pre-generated, cached
 - Hyperlocal AQI interpolation upgrade (kNN regressor weighted by meteorology) — invisible to demo, sells to data judges
 - Voice-guided route mode (Web Speech API, en + es, full turn-by-turn)
 - Pollen / NO₂ overlay toggle (OpenWeather Air Pollution)
@@ -63,7 +63,7 @@ Mobile-first responsive web app for NYC parents. Story = storyteller's real scho
 - Dark mode, marketing landing page, animated splash, share-to-IG cards
 
 ### 1.5 — Hard Triage Cut-List (pre-committed)
-- **If H8 misses (no working end-to-end on hero pair)**: kill XGBoost, languages 3+, voice mode, days-saved, Claude per-kid explanations. Reallocate everyone to closing must-haves.
+- **If H8 misses (no working end-to-end on hero pair)**: kill XGBoost, languages 3+, voice mode, days-saved, Gemini per-kid explanations. Reallocate everyone to closing must-haves.
 - **If H12 misses (no time-scrubber + no multi-kid panel)**: also kill ER choropleth, "Use my current location," polish pass.
 - **If H14 misses (must-haves not all working on hero + 2 backup pairs)**: cut to hero pair only. Backup pairs become demo fallback chips, not interactive.
 - **If H16 missed**: skip nice-to-haves entirely. H16 → H18 = bug fix only.
@@ -79,7 +79,7 @@ next@14 (App Router) · typescript · tailwindcss · shadcn/ui
 mapbox-gl@3 · react-map-gl@7
 zustand            # multi-kid + scrubber state
 next-intl          # i18n (en + es JSON resource files)
-@anthropic-ai/sdk  # Claude batch translation + per-kid explanations
+@google/generative-ai # Gemini batch translation + per-kid explanations
 ```
 
 ### Map / routing
@@ -89,7 +89,7 @@ next-intl          # i18n (en + es JSON resource files)
 
 ### Backend
 - Next.js API routes only (no separate Python service)
-- "Backend" = load static JSON, optionally call Claude. Python data prep runs locally Sat night, outputs JSON, commits.
+- "Backend" = load static JSON, optionally call Gemini. Python data prep runs locally Sat night, outputs JSON, commits.
 
 ### Hosting
 - Vercel, `vercel.app` subdomain (no custom domain)
@@ -107,10 +107,10 @@ next-intl          # i18n (en + es JSON resource files)
 - Matrix lives in `lib/recommendation.ts`, source citations in README + tooltip on the severity selector
 - Output enum: `WALK_STANDARD` (Atlas+standard tied) / `WALK_ATLAS` (Atlas wins) / `WALK_ATLAS_BRIEF` (take a shorter walk only) / `STAY_INSIDE`
 
-### Optional Claude
-- `claude-haiku-4-5` for both batch translation and per-kid explanations
-- Prompt caching (`cache_control: ephemeral`) on system prompts
+### Optional Gemini
+- `gemini-2.5-flash` for both batch translation and per-kid explanations
 - Per-kid explanations (NICE-TO-HAVE) pre-generated × (kid × scenario × locale), cached
+- Free tier covers all hackathon needs
 
 ---
 
@@ -141,10 +141,10 @@ GET https://data.cityofnewyork.us/resource/jb7j-dtam.json?$where=indicator_name 
 - No key for low volume; app token gets higher rate
 - Person A confirms at H4 whether granularity is per-ZCTA (good, "your block" copy works) or per-NYC-health-neighborhood (broader, soften copy to "your neighborhood")
 
-### Anthropic Claude API (Person D) — batch translation + per-kid explanations
+### Google Gemini API (Person D) — batch translation + per-kid explanations
 ```
-POST https://api.anthropic.com/v1/messages
-# claude-haiku-4-5
+POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+# gemini-2.5-flash
 # Two batch jobs (Sat night):
 #   1. Translation: feed en.json strings → es-419 JSON
 #   2. Explanations (NICE-TO-HAVE): per (kid × scenario × locale) → 3-sentence rationale
@@ -160,13 +160,13 @@ POST https://api.anthropic.com/v1/messages
 H0 = kickoff. If start Sat 11am → H4 = Sat 3pm, H8 = Sat 7pm, H12 = Sat 11pm, H18 = Sun 5am, H24 = Sun 11am.
 
 ### H0 (Sat 11:00) — Kickoff
-Repo created, Vercel project linked. Next + Tailwind + shadcn + zustand + next-intl + mapbox-gl + Anthropic SDK installed. All keys in `.env.local` (AirNow, Mapbox, NYC Open Data app token, Anthropic). All 4 ppl can `git push` and see Vercel preview. Hero address pair locked. 30-min standup cadence agreed. Bengali speaker confirmation closed (yes/no decision; if no, language drops permanently).
+Repo created, Vercel project linked. Next + Tailwind + shadcn + zustand + next-intl + mapbox-gl + Gemini SDK installed. All keys in `.env.local (AirNow, Mapbox, NYC Open Data app token, Gemini). All 4 ppl can `git push` and see Vercel preview. Hero address pair locked. 30-min standup cadence agreed. Bengali speaker confirmation closed (yes/no decision; if no, language drops permanently).
 
 ### H4 — Data layer + Map skeleton
 - A: NYC DOHMH dataset cleaned → `er-by-zcta.json` + `nyc-avg.json`; ZCTA boundaries committed; **granularity decision made + copy locked**
 - B: Mapbox map renders centered on Bronx, mobile viewport correct; address autocomplete working (NYC bbox, Bronx-biased)
 - C: AirNow batch ran for 5-borough 200×200m grid → `aqi-grid.json`; forecast endpoint pulled per ZCTA → `aqi-forecast.json`
-- D: i18n scaffolding wired w/ en + (empty) es locale; Claude SDK initialized; kid-profile zustand store + localStorage stub
+- D: i18n scaffolding wired w/ en + (empty) es locale; Gemini SDK initialized; kid-profile zustand store + localStorage stub
 - **Standup #1**
 
 ### H8 — FIRST WORKING END-TO-END (non-negotiable)
@@ -183,7 +183,7 @@ Repo created, Vercel project linked. Next + Tailwind + shadcn + zustand + next-i
 ### H12 — The money shot
 - B+C pair-program: dual route render polished (z-order, draw animation), digestible UX live (🟢/🟡/🟠/🔴 + raw in expander)
 - B: time-scrubber wired against `aqi-forecast.json`; Maya's card flips between 🔴 9am and 🟢 4pm
-- D: multi-kid panel — switching kids retunes recommendation instantly; long-press-to-drop-pin works; ES locale loaded (Claude-batch translation done); language toggle live
+- D: multi-kid panel — switching kids retunes recommendation instantly; long-press-to-drop-pin works; ES locale loaded (Gemini-batch translation done); language toggle live
 - A: hands off coding; from H12 onward = pitch script + rehearsal + backup video
 - **CHECKPOINT**: hero pair + 2 kids + scrubber works on phone; switching kids flips recommendation; scrubbing time flips recommendation
 - **Standup #3**
@@ -195,7 +195,7 @@ Repo created, Vercel project linked. Next + Tailwind + shadcn + zustand + next-i
 
 ### H16 — Polish + nice-to-haves (whichever survive triage)
 - D: Pre-bake demo-route JSONs (3 pairs × 2 kid profiles × 5 time slices) → `DEMO_MODE` env / `?demo=1` short-circuits API calls for preset pairs
-- D: Claude per-kid 3-sentence explanations (if shipping), voice mode (if shipping)
+- D: Gemini per-kid 3-sentence explanations (if shipping), voice mode (if shipping)
 - C: XGBoost forecasting model swap (if shipping); kNN interpolation upgrade (if shipping)
 - B: 5-borough hero scenarios (if shipping), pollen overlay (if shipping)
 - All: visual polish pass (Figma → Tailwind tokens), shadcn theming
@@ -268,9 +268,9 @@ Even-split coding through H12. A pivots to pitch-only at H12.
 - Pairs w/ B at H4–H8 (data → heatmap render)
 - Pairs w/ D at H8–H12 (forecast format → scrubber data layer)
 
-### Person D — Claude API + Recommendation Matrix + i18n + Multi-Kid Panel + Responsive Layout
-**Owns API**: Anthropic Claude
-- Claude batch translation pipeline (Sat night) → `messages/es.json`
+### Person D — Gemini API + Recommendation Matrix + i18n + Multi-Kid Panel + Responsive Layout
+**Owns API**: Google Gemini
+- Gemini batch translation pipeline (Sat night) → `messages/es.json`
 - **Threshold matrix module** (`lib/recommendation.ts`): cited against EPA AQI bands + AAP/AAFA pediatric guidance, sources in README + tooltip
 - Recommendation engine: `(severity × age × exposure-minutes × max-AQI × time-slice) → enum`
 - **Multi-kid recommendation panel**: one card per kid, color-coded verdict (🟢/🟡/🟠/🔴), kid name in every card, instant retune on switch
@@ -282,7 +282,7 @@ Even-split coding through H12. A pivots to pitch-only at H12.
 - Responsive layout (mobile bottom-sheet ↔ desktop sidebar) for stage flexibility
 - PWA manifest + service worker (cache demo pairs offline so demo never needs wifi)
 - Loading / empty / error / "outside NYC" states
-- **NICE-TO-HAVE**: Claude per-kid 3-sentence explanations × (kid × scenario × locale); voice-guided route mode (Web Speech API, en + es); Bengali locale (only if speaker locked); "days saved" bar
+- **NICE-TO-HAVE**: Gemini per-kid 3-sentence explanations × (kid × scenario × locale); voice-guided route mode (Web Speech API, en + es); Bengali locale (only if speaker locked); "days saved" bar
 - Lighthouse perf + a11y pass at H18
 
 ### Cross-cutting rules
@@ -325,7 +325,7 @@ Land at 0:45: *"The forecast knows when she can go out."*
 - "Mapbox returns route alternatives, we score each by integrated AQI exposure, pick the cleanest." (Raj — products)
 - "Per-kid recommendation tunes off a transparent matrix grounded in EPA AQI bands and AAP pediatric guidance." (Susan — defensible health logic)
 - "Time-scrubber drives off EPA AirNow's published forecast — no model training, no demo-day risk." (Richard — engineering rigor)
-- "Claude translated the whole app to Spanish and (if shipped) writes per-kid explanations, prompt-cached." (Raj — Anthropic; BASTA, Riyuan — language access)
+- "Gemini translated the whole app to Spanish and (if shipped) writes per-kid explanations." (Raj — AI products; BASTA, Riyuan — language access)
 - "All precomputed, served from the edge, sub-second on a phone." (Richard — perf)
 - "Designed in Figma, exported to a Tailwind token system." (Figma)
 
@@ -441,16 +441,16 @@ If 1–6 pass, demo lands. 7–11 are insurance.
 - EN + ES MUST-HAVE
 - Bengali = +1 stretch only if speaker locked in advance, no floor-recruiting
 - Voice mode: NICE-TO-HAVE
-- Per-kid Claude 3-sentence explanations: NICE-TO-HAVE (moved from B to D for load relief)
+- Per-kid Gemini 3-sentence explanations: NICE-TO-HAVE (moved from B to D for load relief)
 - "Days saved" (labeled estimated): NICE-TO-HAVE
 - 30-min standup cadence in chat
 - First working end-to-end target = H8, hard freeze = H18
 - Hard triage cut-list pre-committed at H8 / H12 / H14 / H16
-- One major external API per person: A=NYC DOHMH, B=Mapbox, C=EPA AirNow, D=Anthropic Claude
+- One major external API per person: A=NYC DOHMH, B=Mapbox, C=EPA AirNow, D=Google Gemini
 
 ## Unresolved Questions
 - ER data granularity per-ZCTA or per-neighborhood? Person A confirms at H4
 - Bengali speaker locked by H0?
-- Per-kid Claude explanations: build for Anthropic-judge signal, or stop at must-haves?
+- Per-kid Gemini explanations: build, or stop at must-haves?
 - 2 backup Bronx pairs picked by H4?
 - XGBoost upgrade attempted, or skipped to free Person C for hyperlocal kNN instead?
