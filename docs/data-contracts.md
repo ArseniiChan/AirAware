@@ -135,18 +135,22 @@ This is documented openly — judges who read the README will see "hero forecast
 
 ---
 
-## 3. `er-by-zcta.json` — owned by Person A, documented here for completeness
+## 3. `er-by-zcta.json` — owned by Person A
 
-Person C does not write this — Person A does — but it's listed so anyone reading this file has the full data layer in one place.
+Produced by `scripts/ingest_er.py`. Live path is opt-in (set `NYC_DOHMH_RESOURCE_ID` + `NYC_OPEN_DATA_APP_TOKEN`); offline path reads `scripts/fixtures/dohmh_asthma_ed.json`.
 
 ```jsonc
 {
   "schema_version": 1,
-  "source": "NYC DOHMH Asthma ED Visit Rate by ZCTA (aggregated from SPARCS)",
+  "generated_at": "2026-04-25T17:00:00Z",
+  "source": "NYC DOHMH (asthma ED visits, ages 0-17, by ZCTA)",
+  "indicator": "Asthma emergency department visit rate, ages 0-17, by ZCTA",
+  "period": "2022 (most recent published 12-month window)",
   "nyc_avg_per_10k": 92.4,
   "zctas": {
     "10454": {
       "name": "Mott Haven",
+      "borough": "Bronx",
       "rate_per_10k_children": 412.7,
       "visits": 187,
       "ratio_to_nyc_avg": 4.47,
@@ -155,6 +159,28 @@ Person C does not write this — Person A does — but it's listed so anyone rea
   }
 }
 ```
+
+### H4 granularity decision (locked)
+Per-ZCTA, not per-UHF-neighborhood. Rationale: ZCTA aligns with Mapbox's geocoded `postcode` so the runtime lookup is `zctas[postcode]` with no point-in-polygon. Demo copy remains "your block" with a visible source line that names the unit ("NYC DOHMH, by ZCTA").
+
+## 4. `nyc-avg.json` — companion to `er-by-zcta.json`
+
+Tiny convenience file (one number) for callers that only need the NYC pediatric average without loading the full ZCTA table.
+
+```jsonc
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-25T17:00:00Z",
+  "source": "...",
+  "rate_per_10k_children": 92.4
+}
+```
+
+## 5. `zcta.geojson` — ZCTA boundary FeatureCollection
+
+Produced by `scripts/ingest_zctas.py`. Used **only** by the ER choropleth NICE-TO-HAVE; the must-have block-context card does not need polygons.
+
+The current offline output is `properties.shape = "approximate_bbox"` — small rectangles around centroids, NOT real boundaries. Before shipping the choropleth on stage, swap in US Census TIGER ZCTA geometries.
 
 ---
 
