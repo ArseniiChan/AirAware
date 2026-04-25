@@ -11,13 +11,24 @@ export interface AddressPick {
   name: string;     // human-readable, e.g. "1290 Spofford Ave, Bronx, New York"
   lon: number;
   lat: number;
+  zcta?: string;    // 5-digit NYC ZIP from feature.context (BlockContextCard uses this)
 }
 
+interface FeatureContext { id: string; text: string; }
 interface Feature {
   id: string;
   place_name: string;
   text: string;
   center: [number, number];
+  context?: FeatureContext[];
+  properties?: { postcode?: string };
+}
+
+function zctaFromFeature(f: Feature): string | undefined {
+  // Mapbox returns ZIP either via context entries (id="postcode.123") or, for
+  // address-type features, via properties.postcode.
+  const ctxZip = f.context?.find((c) => c.id?.startsWith('postcode'))?.text;
+  return ctxZip ?? f.properties?.postcode;
 }
 
 interface Props {
@@ -93,7 +104,12 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
 
   function pick(f: Feature) {
     onChange(f.place_name);
-    onPick({ name: f.place_name, lon: f.center[0], lat: f.center[1] });
+    onPick({
+      name: f.place_name,
+      lon: f.center[0],
+      lat: f.center[1],
+      zcta: zctaFromFeature(f),
+    });
     setOpen(false);
   }
 

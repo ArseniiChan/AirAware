@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { KidProfilePicker } from '@/components/KidProfilePicker';
@@ -15,17 +15,24 @@ import { MapView } from '@/components/MapView';
 import type { AddressPick } from '@/components/AddressAutocomplete';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
+import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
+import type { RouteOptions } from '@/lib/recommendation';
 
 type Step = 'landing' | 'from' | 'to' | 'computing' | 'results';
 
 const HERO_FROM = 'Hunts Point Ave & Bruckner Blvd, Bronx, NY';
 const HERO_TO = 'PS 48 — 1290 Spofford Ave, Bronx, NY';
 
-// Hero coordinates (resolved via Mapbox geocoding during demo prep). We bake
-// them into the preset chip so a tap fires `onPick` instantly without
-// round-tripping the geocoder on stage.
-const HERO_FROM_PICK: AddressPick = { name: HERO_FROM, lon: -73.89083, lat: 40.82031 };
-const HERO_TO_PICK:   AddressPick = { name: HERO_TO,   lon: -73.88689, lat: 40.81423 };
+// Hero coordinates baked in so the demo preset doesn't round-trip the geocoder.
+// Both endpoints sit in NYC ZCTA 10474 (Hunts Point, Bronx) — used by Person A's
+// BlockContextCard for the ER-rate lookup.
+const HERO_FROM_PICK: AddressPick = { name: HERO_FROM, lon: -73.89083, lat: 40.82031, zcta: '10474' };
+const HERO_TO_PICK:   AddressPick = { name: HERO_TO,   lon: -73.88689, lat: 40.81423, zcta: '10474' };
+
+// Non-hero pairs scale exposure by Person C's forecast for this ZCTA. Hunts
+// Point covers the demo; for arbitrary judge-typed addresses we use it as a
+// reasonable Bronx-default until we wire `zcta.geojson` point-in-polygon.
+const FALLBACK_ZCTA = '10474';
 
 function isHeroPair(from: string, to: string): boolean {
   return from === HERO_FROM && to === HERO_TO;
@@ -41,26 +48,54 @@ export default function HomePage() {
   const [timeSlice, setTimeSlice] = useState<TimeSlice>('now');
   const [overlayDismissed, setOverlayDismissed] = useState(false);
   const [geoRoutes, setGeoRoutes] = useState<DemoRoutesPayload | null>(null);
+  const [liveBase, setLiveBase] = useState<RouteOptions | null>(null);
+  const [forecast, setForecast] = useState<AqiForecast | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
 
-  const routes = step === 'results' ? HERO_ROUTES_BY_TIME[timeSlice] : null;
+  const isHero = isHeroPair(from, to);
 
-  // When entering results, decide route source: hero pair → static
-  // demo-routes.json (guaranteed to diverge); anything else → POST /api/route.
+  // The kid recommendation panel consumes a RouteOptions per slice. Three
+  // sources, in priority order:
+  //   1. Hero pair → Person D's hand-tuned HERO_ROUTES_BY_TIME (guaranteed
+  //      to flip Maya at 4pm — the demo's load-bearing moment).
+  //   2. Non-hero with live engine + forecast → live exposure scaled by
+  //      futureAqi/currentAqi per docs/data-contracts.md §2.
+  //   3. Non-hero without forecast → live exposure unscaled (slice has no
+  //      effect; better than nothing while loading).
+  const routes: RouteOptions | null = useMemo(() => {
+    if (step !== 'results') return null;
+    if (isHero) return HERO_ROUTES_BY_TIME[timeSlice];
+    if (liveBase && forecast) {
+      return scaleRoutesByForecast(liveBase, forecast, FALLBACK_ZCTA, timeSlice);
+    }
+    return liveBase;
+  }, [step, isHero, timeSlice, liveBase, forecast]);
+
+  // Load the forecast once on mount so the scrubber is responsive immediately
+  // when the user reaches results.
+  useEffect(() => {
+    let cancelled = false;
+    loadForecast()
+      .then((f) => { if (!cancelled) setForecast(f); })
+      .catch((err) => { console.error('forecast load failed', err); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // On entering results, fetch route geometry. Hero pair → static fixture,
+  // anything else → /api/route. Captures live exposure into `liveBase` so
+  // the scrubber can scale it per slice.
   useEffect(() => {
     if (step !== 'results' || geoRoutes) return;
     let cancelled = false;
     setRouteError(null);
 
-    if (isHeroPair(from, to)) {
+    if (isHero) {
       loadDemoRoutes()
         .then((data) => { if (!cancelled) setGeoRoutes(data); })
         .catch((err) => { if (!cancelled) setRouteError(err.message); });
       return () => { cancelled = true; };
     }
 
-    // Non-hero pair: live engine. Send coords if we have them; the API will
-    // geocode strings as a fallback.
     const body = {
       from: fromPick ? [fromPick.lon, fromPick.lat] : from,
       to:   toPick   ? [toPick.lon,   toPick.lat]   : to,
@@ -76,7 +111,12 @@ export default function HomePage() {
       })
       .then((engine) => {
         if (cancelled) return;
-        // Adapt EngineResult → DemoRoutesPayload shape so MapView is unchanged.
+        // Persist live exposure for the kid recommendations panel.
+        setLiveBase({
+          standard: engine.standard.exposure,
+          atlas: engine.atlas.exposure,
+        });
+        // Adapt EngineResult → DemoRoutesPayload for MapView.
         const adapted: DemoRoutesPayload = {
           schema_version: 1,
           generated_at: new Date().toISOString(),
@@ -106,7 +146,7 @@ export default function HomePage() {
       })
       .catch((err) => { if (!cancelled) setRouteError(err.message); });
     return () => { cancelled = true; };
-  }, [step, geoRoutes, from, to, fromPick, toPick]);
+  }, [step, geoRoutes, isHero, from, to, fromPick, toPick]);
 
   function reset() {
     setStep('landing');
@@ -117,6 +157,7 @@ export default function HomePage() {
     setOverlayDismissed(false);
     setTimeSlice('now');
     setGeoRoutes(null);
+    setLiveBase(null);
     setRouteError(null);
   }
 
@@ -160,7 +201,8 @@ export default function HomePage() {
         ctaLabel="Find clean route"
         onSubmit={() => {
           setOverlayDismissed(false);
-          setGeoRoutes(null); // recompute for this new pair
+          setGeoRoutes(null);
+          setLiveBase(null);
           setStep('computing');
         }}
         onBack={() => setStep('from')}
@@ -195,7 +237,7 @@ export default function HomePage() {
         className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
         style={{ animation: 'air-fade 0.6s ease-out both' }}
       >
-        <MapView routes={geoRoutes} />
+        <MapView routes={geoRoutes} showHeatmap />
       </section>
 
       {routeError && (
@@ -205,7 +247,7 @@ export default function HomePage() {
       )}
 
       <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
-        <BlockContextCard address={from} />
+        <BlockContextCard address={from} zcta={fromPick?.zcta} />
       </div>
 
       <div style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}>

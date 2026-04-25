@@ -11,17 +11,22 @@ import {
   NYC_BBOX,
 } from '@/lib/mapbox';
 import type { DemoRoutesPayload } from '@/lib/routesData';
+import { HeatmapLayer } from './HeatmapLayer';
 
 interface Props {
   /** When provided, renders the standard (red) and atlas (green) polylines and
    *  fits the camera to their combined bounds. */
   routes?: DemoRoutesPayload | null;
+  /** Render the AQI heatmap behind everything. Off by default to keep the
+   *  pre-route map clean (judges only need to see air quality where the
+   *  routes are about to be drawn). */
+  showHeatmap?: boolean;
 }
 
 const STANDARD_RED = '#dc2626';
 const ATLAS_GREEN = '#16a34a';
 
-export function MapView({ routes = null }: Props) {
+export function MapView({ routes = null, showHeatmap = false }: Props) {
   const mapRef = useRef<MapRef | null>(null);
 
   const standardGeoJson = useMemo(() => {
@@ -88,6 +93,8 @@ export function MapView({ routes = null }: Props) {
       attributionControl={false}
     >
       <NavigationControl position="top-right" showCompass={false} />
+
+      {showHeatmap && <HeatmapLayer />}
 
       {standardGeoJson && (
         <Source id="route-standard" type="geojson" data={standardGeoJson}>
