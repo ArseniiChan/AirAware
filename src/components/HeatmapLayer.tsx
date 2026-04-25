@@ -64,17 +64,25 @@ export function HeatmapLayer() {
 
   if (!data) return null;
 
-  // Mapbox expression: weight is normalized AQI (50 → 0, 200 → 1).
-  // Color stops follow the EPA AQI palette, but desaturated so the routes
-  // and basemap labels stay legible underneath.
+  // Two layers:
+  //
+  //  1. Heatmap (low zoom only). At city-wide zoom (10-12) we want the user
+  //     to see the broad pollution gradient: Bronx/Hunts Point hot, outer
+  //     boroughs cooler. The Gaussian-smoothed heatmap reads cleanly here.
+  //
+  //  2. Discrete cells (mid + high zoom). The moment the user zooms in to
+  //     pick a route — typically zoom 12+ — they want to see block-by-block
+  //     variation: the bus depot block, the highway curb, the side street.
+  //     Circles sized to roughly cover their 200m cell footprint give that.
+  //
+  //  Crossfade at zoom 12 → 13 so neither layer is doing both jobs.
   return (
     <Source id="aqi-heatmap" type="geojson" data={data} buffer={32}>
       <Layer
         id="aqi-heatmap-layer"
         type="heatmap"
         slot="bottom"
-        // Fade out as we zoom in so individual cells take over.
-        maxzoom={15}
+        maxzoom={13}
         paint={{
           'heatmap-weight': [
             'interpolate', ['linear'], ['get', 'aqi'],
@@ -85,52 +93,56 @@ export function HeatmapLayer() {
           ],
           'heatmap-intensity': [
             'interpolate', ['linear'], ['zoom'],
-            10, 0.7,
-            14, 1.4,
+            10, 0.9,
+            12, 1.4,
           ],
-          // Toned down so the route polylines are the visual hero. We only
-          // start tinting the basemap once heatmap-density crosses 0.25, and
-          // alpha values are capped at 0.45 even at hazardous AQI.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0,    'rgba(34,197,94,0)',
-            0.20, 'rgba(132,204,22,0)',
-            0.35, 'rgba(250,204,21,0.20)', // moderate (yellow)
-            0.55, 'rgba(249,115,22,0.30)', // sensitive (orange)
-            0.75, 'rgba(220,38,38,0.38)',  // unhealthy (red)
-            1.0,  'rgba(127,29,29,0.45)',  // hazardous (deep red)
+            0.15, 'rgba(132,204,22,0.18)',
+            0.35, 'rgba(250,204,21,0.32)', // moderate
+            0.55, 'rgba(249,115,22,0.45)', // sensitive
+            0.75, 'rgba(220,38,38,0.55)',  // unhealthy
+            1.0,  'rgba(127,29,29,0.62)',  // hazardous
           ],
           'heatmap-radius': [
             'interpolate', ['linear'], ['zoom'],
-            10, 12,
-            13, 20,
-            15, 30,
+            10, 14,
+            12, 22,
           ],
           'heatmap-opacity': [
             'interpolate', ['linear'], ['zoom'],
-            10, 0.55,
-            14, 0.45,
-            15, 0,
+            10, 0.7,
+            11, 0.65,
+            12, 0.5,
+            13, 0,
           ],
         }}
       />
-      {/* At deep zoom, fade in discrete 200m cells colored by AQI band. */}
+      {/* Block-level cells take over from zoom 11.5 onward. Sized to roughly
+       *  cover the 200m grid footprint at each zoom (200m ≈ 21px @ z13,
+       *  42px @ z14, 84px @ z15 at NYC latitude). */}
       <Layer
         id="aqi-cells-layer"
         type="circle"
         slot="bottom"
-        minzoom={13}
+        minzoom={11}
         paint={{
           'circle-radius': [
             'interpolate', ['linear'], ['zoom'],
-            13, 4,
-            16, 9,
+            11, 4,
+            13, 11,
+            14, 22,
+            15, 42,
+            16, 64,
           ],
           'circle-opacity': [
             'interpolate', ['linear'], ['zoom'],
-            13, 0,
-            14, 0.32,
-            16, 0.4,
+            11, 0,
+            12, 0.35,
+            13, 0.55,
+            14, 0.6,
+            16, 0.55,
           ],
           'circle-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
@@ -140,7 +152,7 @@ export function HeatmapLayer() {
            150,   '#ef4444', // unhealthy
            200,   '#7f1d1d', // very unhealthy
           ],
-          'circle-blur': 0.4,
+          'circle-blur': 0.5,
         }}
       />
     </Source>
