@@ -50,6 +50,29 @@ function getPosition(): Promise<GeolocationPosition> {
   });
 }
 
+/** Reverse-geocode a known lon/lat into an AddressPick. Throws on token /
+ *  fetch failure. Caller decides whether to enforce NYC bbox. */
+export async function reverseGeocode(lon: number, lat: number): Promise<AddressPick> {
+  if (!MAPBOX_TOKEN) {
+    throw new GeolocateError('no_token', 'Map token missing.');
+  }
+  const url =
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json` +
+    `?types=address,poi,place,postcode&limit=1&access_token=${MAPBOX_TOKEN}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new GeolocateError('reverse_failed', 'Could not look up that address.');
+  }
+  const json = (await res.json()) as { features?: GeocodeFeature[] };
+  const feat = json.features?.[0];
+  return {
+    name: feat?.place_name ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+    lon,
+    lat,
+    zcta: feat ? zctaFromFeature(feat) : undefined,
+  };
+}
+
 export async function locateMe(): Promise<AddressPick> {
   if (!MAPBOX_TOKEN) {
     throw new GeolocateError('no_token', 'Map token missing.');
@@ -66,20 +89,5 @@ export async function locateMe(): Promise<AddressPick> {
     );
   }
 
-  // Reverse-geocode for a friendly name + ZCTA.
-  const url =
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json` +
-    `?types=address,poi,place,postcode&limit=1&access_token=${MAPBOX_TOKEN}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new GeolocateError('reverse_failed', 'Could not look up your address.');
-  }
-  const json = (await res.json()) as { features?: GeocodeFeature[] };
-  const feat = json.features?.[0];
-  return {
-    name: feat?.place_name ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
-    lon,
-    lat,
-    zcta: feat ? zctaFromFeature(feat) : undefined,
-  };
+  return reverseGeocode(lon, lat);
 }

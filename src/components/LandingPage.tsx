@@ -5,6 +5,7 @@ import { LanguageToggle } from './LanguageToggle';
 
 interface Props {
   onStart: () => void;
+  onReturning?: () => void;
 }
 
 const FEATURE_EMOJIS = ['🟢', '👧', '⏱'] as const;
@@ -21,7 +22,7 @@ const FLOAT_DOTS = [
   { left: '92%', top: '38%', size: 6,  color: 'bg-emerald-400/60', delay: '2.1s' },
 ];
 
-export function LandingPage({ onStart }: Props) {
+export function LandingPage({ onStart, onReturning }: Props) {
   const t = useTranslations('landing');
   const features = [
     { emoji: FEATURE_EMOJIS[0], title: t('feature1Title'), body: t('feature1Body') },
@@ -54,13 +55,25 @@ export function LandingPage({ onStart }: Props) {
       />
 
       {/* Top bar */}
-      <header className="relative z-10 flex items-center justify-between px-6 pt-6">
+      <header className="relative z-10 flex items-start justify-between px-6 pt-6">
         <div className="text-2xl font-extrabold tracking-tight">
           <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
             AirAware
           </span>
         </div>
-        <LanguageToggle />
+        <div className="flex flex-col items-end gap-2">
+          {onReturning && (
+            <button
+              type="button"
+              onClick={onReturning}
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm backdrop-blur transition hover:bg-emerald-50 hover:text-emerald-800"
+            >
+              <span>{t('returning')}</span>
+              <span aria-hidden className="transition group-hover:translate-x-0.5">→</span>
+            </button>
+          )}
+          <LanguageToggle />
+        </div>
       </header>
 
       {/* Hero */}

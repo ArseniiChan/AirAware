@@ -14,6 +14,7 @@ import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
 import { loadWeather, captionForSlice } from '@/lib/weatherData';
 import { loadRecentPicks, rememberPick } from '@/lib/recentPicks';
+import { reverseGeocode, locateMe, GeolocateError } from '@/lib/geolocate';
 import type { RouteOptions } from '@/lib/recommendation';
 
 type Step = 'landing' | 'from' | 'to' | 'computing' | 'results';
@@ -126,6 +127,12 @@ export default function HomePage() {
       return () => { cancelled = true; };
     }
 
+    // Returning users land here with empty inputs — don't pound /api/route until
+    // both endpoints are filled (typed or long-press-inferred).
+    const hasFrom = fromPick !== null || from.trim().length > 0;
+    const hasTo = toPick !== null || to.trim().length > 0;
+    if (!hasFrom || !hasTo) return () => { cancelled = true; };
+
     const body = {
       from: fromPick ? [fromPick.lon, fromPick.lat] : from,
       to:   toPick   ? [toPick.lon,   toPick.lat]   : to,
@@ -190,8 +197,50 @@ export default function HomePage() {
     setEngineWarning(null);
   }
 
+  // Long-press on the map = "I want to go there." Reverse-geocode the pressed
+  // point into a destination, and if the user hasn't picked an origin yet,
+  // try to use their current location. If geolocation is denied / unavailable
+  // we surface a soft prompt asking them to type the origin.
+  async function handleMapLongPress(lon: number, lat: number) {
+    try {
+      const dest = await reverseGeocode(lon, lat);
+      setTo(dest.name);
+      setToPick(dest);
+      rememberPick(dest);
+      setRouteError(null);
+    } catch {
+      setRouteError('Couldn\'t look up that point. Try again or type a destination.');
+      return;
+    }
+
+    // Only auto-locate if the user hasn't already chosen an origin.
+    if (!fromPick) {
+      try {
+        const me = await locateMe();
+        setFrom(me.name);
+        setFromPick(me);
+        rememberPick(me);
+      } catch (err) {
+        if (err instanceof GeolocateError && err.code === 'denied') {
+          setRouteError('Pin dropped. Type your starting address — location permission was denied.');
+        } else if (err instanceof GeolocateError && err.code === 'outside_nyc') {
+          setRouteError('Pin dropped. You appear to be outside NYC — type a Bronx address to start.');
+        } else {
+          setRouteError('Pin dropped. Type your starting address.');
+        }
+      }
+    }
+
+    setRecentPicks(loadRecentPicks());
+  }
+
   if (step === 'landing') {
-    return <LandingPage onStart={() => setStep('from')} />;
+    return (
+      <LandingPage
+        onStart={() => setStep('from')}
+        onReturning={() => setStep('results')}
+      />
+    );
   }
 
   if (step === 'from') {
@@ -291,15 +340,21 @@ export default function HomePage() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-600">
             Your route
           </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-            <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
-              {from.split(',')[0]}
-            </span>
-            <span className="px-2 text-slate-400">→</span>
-            <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
-              {to.split(',')[0]}
-            </span>
-          </h1>
+          {from || to ? (
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+              <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
+                {from ? from.split(',')[0] : 'Start'}
+              </span>
+              <span className="px-2 text-slate-400">→</span>
+              <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
+                {to ? to.split(',')[0] : 'Destination'}
+              </span>
+            </h1>
+          ) : (
+            <h1 className="mt-1 text-lg font-medium tracking-tight text-slate-500 sm:text-xl">
+              Press and hold the map to drop a destination, or type below.
+            </h1>
+          )}
         </div>
 
         {/* Editable from/to + time scrubber, all at the top so the user can
@@ -354,7 +409,12 @@ export default function HomePage() {
           className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-2xl border border-emerald-100 bg-white/70 shadow-xl shadow-emerald-500/10 backdrop-blur"
           style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}
         >
-          <MapView routes={geoRoutes} exposure={routes} showHeatmap />
+          <MapView
+            routes={geoRoutes}
+            exposure={routes}
+            showHeatmap
+            onLongPress={handleMapLongPress}
+          />
         </section>
 
         <div style={{ animation: 'air-fade 0.6s ease-out 0.05s both' }}>

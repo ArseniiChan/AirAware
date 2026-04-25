@@ -35,6 +35,11 @@ interface Props {
   exposure?: RouteOptions | null;
   /** Render the AQI heatmap behind buildings. Off by default. */
   showHeatmap?: boolean;
+  /** Fired on long-press / right-click on an empty map area. Mobile browsers
+   *  emit contextmenu after ~500ms touch hold; desktop testers use right-click.
+   *  Used by the page to drop a destination pin and infer the origin from
+   *  the user's current location. */
+  onLongPress?: (lon: number, lat: number) => void;
 }
 
 const STANDARD_RED = '#ef4444';
@@ -51,7 +56,7 @@ const LIGHT_LABEL: Record<LightPreset, string> = {
 type RouteKind = 'standard' | 'atlas';
 const ROUTE_LAYER_IDS = ['route-standard-line', 'route-atlas-line'];
 
-export function MapView({ routes = null, exposure = null, showHeatmap = false }: Props) {
+export function MapView({ routes = null, exposure = null, showHeatmap = false, onLongPress }: Props) {
   const mapRef = useRef<MapRef | null>(null);
   const [styleReady, setStyleReady] = useState(false);
   const [lightPreset, setLightPreset] = useState<LightPreset>(DEFAULT_LIGHT_PRESET);
@@ -178,6 +183,13 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
         interactiveLayerIds={ROUTE_LAYER_IDS}
         onMouseMove={onMapMove}
         onMouseLeave={onMapLeave}
+        onContextMenu={(e) => {
+          if (!onLongPress) return;
+          // Suppress the browser's right-click menu / iOS callout so the user
+          // sees the pin land cleanly.
+          e.preventDefault?.();
+          onLongPress(e.lngLat.lng, e.lngLat.lat);
+        }}
         cursor={hovered ? 'pointer' : 'grab'}
       >
         <NavigationControl position="top-right" showCompass={false} />
