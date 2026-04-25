@@ -32,22 +32,27 @@ interface MapboxResponse {
   message?: string;
 }
 
-const COORDS_FRACTIONS = [0.4, 0.5, 0.6] as const;
+const COORDS_FRACTIONS = [0.3, 0.5, 0.7] as const;
 const SIDES = [+1, -1] as const;
 const TWIN_THRESHOLD = 0.7;
-const MAX_DISTANCE_RATIO = 1.6; // atlas can be at most 60% longer than standard
+const MAX_DISTANCE_RATIO = 1.9; // atlas can be up to 90% longer if meaningfully cleaner
 
-// Detour offset bracket scaled to the standard walk length. The fixed
-// [200,350,500] bracket was wrong for short walks: a 500m perpendicular detour
-// on a 300m walk is absurd, and a 200m offset is half the walk distance so
-// Mapbox usually refuses. Result: every candidate got filtered and the engine
-// returned `standard` twice.
+// Detour offset bracket scaled to the standard walk length. For a long urban
+// walk the visible "go around the hot spot" alternative is often 1-2 km
+// perpendicular to the direct line (e.g., West Side instead of East Harlem
+// for an UES → South Bronx commute). The previous 500m cap was completely
+// invisible to those alternatives.
 //
-// Heuristic: cap detour at ~40% of straight-line distance, with a 60m floor
-// so we still trigger Mapbox's road-graph routing.
+// Heuristic: cap detour at ~50% of straight-line distance, hard cap at
+// 1500m so we don't ask Mapbox to route through nonsense waypoints over
+// water. 60m floor keeps short walks searchable.
 function offsetsForDistance(distM: number): readonly number[] {
-  const cap = Math.max(60, Math.min(500, distM * 0.4));
-  return [Math.round(cap * 0.4), Math.round(cap * 0.7), Math.round(cap)];
+  const cap = Math.max(60, Math.min(1500, distM * 0.5));
+  return [
+    Math.round(cap * 0.25),
+    Math.round(cap * 0.55),
+    Math.round(cap),
+  ];
 }
 
 const directionsCache = new Map<string, Promise<MapboxResponse>>();
