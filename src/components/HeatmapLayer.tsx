@@ -21,11 +21,25 @@ interface AqiCell {
 interface AqiGridFile {
   schema_version: number;
   bbox: [number, number, number, number];
+  spacing_m: number;
   cells: AqiCell[];
 }
 
 let gridCache: GeoJSON.FeatureCollection | null = null;
 let inflight: Promise<GeoJSON.FeatureCollection> | null = null;
+
+/** Build a closed square ring around a cell center, sized to the grid spacing. */
+function cellPolygonRing(lon: number, lat: number, spacingM: number): number[][] {
+  const halfLat = spacingM / 2 / 111_320;
+  const halfLon = spacingM / 2 / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return [
+    [lon - halfLon, lat - halfLat],
+    [lon + halfLon, lat - halfLat],
+    [lon + halfLon, lat + halfLat],
+    [lon - halfLon, lat + halfLat],
+    [lon - halfLon, lat - halfLat],
+  ];
+}
 
 async function loadGridGeoJson(): Promise<GeoJSON.FeatureCollection> {
   if (gridCache) return gridCache;
@@ -36,12 +50,16 @@ async function loadGridGeoJson(): Promise<GeoJSON.FeatureCollection> {
         return r.json() as Promise<AqiGridFile>;
       })
       .then((g) => {
+        const spacing = g.spacing_m ?? 200;
         const fc: GeoJSON.FeatureCollection = {
           type: 'FeatureCollection',
           features: g.cells.map((c) => ({
             type: 'Feature',
             properties: { aqi: c.aqi },
-            geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [cellPolygonRing(c.lon, c.lat, spacing)],
+            },
           })),
         };
         gridCache = fc;
@@ -119,32 +137,17 @@ export function HeatmapLayer() {
           ],
         }}
       />
-      {/* Block-level cells take over from zoom 11.5 onward. Sized to roughly
-       *  cover the 200m grid footprint at each zoom (200m ≈ 21px @ z13,
-       *  42px @ z14, 84px @ z15 at NYC latitude). */}
+      {/* Block-level squares take over from zoom 11 onward. Each grid cell
+       *  is rendered as its actual 200m × 200m polygon — true block-shaped
+       *  fills, not Gaussian-smoothed circles. A thin outline at high zoom
+       *  separates adjacent cells visually. */}
       <Layer
-        id="aqi-cells-layer"
-        type="circle"
+        id="aqi-cells-fill"
+        type="fill"
         slot="bottom"
         minzoom={11}
         paint={{
-          'circle-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            11, 4,
-            13, 11,
-            14, 22,
-            15, 42,
-            16, 64,
-          ],
-          'circle-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            11, 0,
-            12, 0.35,
-            13, 0.55,
-            14, 0.6,
-            16, 0.55,
-          ],
-          'circle-color': [
+          'fill-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
              0,   '#86efac', // good
             50,   '#fde047', // moderate
@@ -152,7 +155,31 @@ export function HeatmapLayer() {
            150,   '#ef4444', // unhealthy
            200,   '#7f1d1d', // very unhealthy
           ],
-          'circle-blur': 0.5,
+          'fill-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            11, 0,
+            12, 0.35,
+            13, 0.55,
+            14, 0.6,
+            16, 0.55,
+          ],
+          'fill-antialias': true,
+        }}
+      />
+      <Layer
+        id="aqi-cells-outline"
+        type="line"
+        slot="bottom"
+        minzoom={14}
+        paint={{
+          'line-color': '#0f172a',
+          'line-width': 0.5,
+          'line-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 0,
+            15, 0.18,
+            17, 0.30,
+          ],
         }}
       />
     </Source>
