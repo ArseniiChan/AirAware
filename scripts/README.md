@@ -1,7 +1,6 @@
-# AirAware data pipeline
+# Person C — AirAware data pipeline
 
-Person C owns: EPA AirNow ingest, NYC 200m AQI grid, per-ZCTA 24h forecast, diurnal fallback, hero hand-tuning.
-Person A owns: NYC DOHMH pediatric asthma ED rates, NYC avg, ZCTA boundary FeatureCollection.
+Owns: EPA AirNow ingest, NYC 200m AQI grid, per-ZCTA 24h forecast, diurnal fallback, hero hand-tuning.
 
 ## What this directory produces
 
@@ -9,6 +8,7 @@ Person A owns: NYC DOHMH pediatric asthma ED rates, NYC avg, ZCTA boundary Featu
 |---|---|---|---|
 | `public/data/aqi-grid.json` | C | Person B (heatmap layer) | 200m AQI grid across all 5 boroughs |
 | `public/data/aqi-forecast.json` | C | Person B (time-scrubber) → Person D (recommendation matrix) | Per-ZCTA 24h hourly forecast |
+| `public/data/weather.json` | C | Person D (copy), Person C (NICE-TO-HAVE XGBoost features) | City-wide hourly temp/wind/humidity |
 | `public/data/er-by-zcta.json` | A | Person A (block-context card) | Pediatric asthma ED rate per ZCTA + ratio to NYC avg + `one_in_n` |
 | `public/data/nyc-avg.json` | A | Person A (block-context card fallback) | NYC pediatric ED rate as a single scalar |
 | `public/data/zcta.geojson` | A | ER choropleth NICE-TO-HAVE only | ZCTA polygon FeatureCollection (currently bbox approximations) |
@@ -30,8 +30,6 @@ pip install -r requirements.txt
 set -a; . ../.env.local; set +a
 python ingest_aqi.py
 python ingest_aqi_forecast.py
-python ingest_er.py
-python ingest_zctas.py
 
 # Demo snapshot (synthetic Bronx-hot data, ignores live API even if key is set)
 python ingest_aqi.py --demo-snapshot
@@ -41,11 +39,6 @@ python ingest_aqi_forecast.py --demo-snapshot
 unset AIRNOW_API_KEY
 python ingest_aqi.py
 python ingest_aqi_forecast.py
-
-# Live (real NYC DOHMH data — opt-in, resource id can drift between annual publications)
-export NYC_DOHMH_RESOURCE_ID=...   # Socrata resource id of the asthma ED indicator
-export NYC_OPEN_DATA_APP_TOKEN=... # optional; bumps rate limit ceiling
-python ingest_er.py
 ```
 
 Both scripts write into `public/data/`.
@@ -79,16 +72,28 @@ python -m pytest -q
 
 42 tests across 5 modules, all TDD-built (red → green → refactor per `.claude/skills/test-driven-development`).
 
+## Forecast priority chain
+
+When `ingest_aqi_forecast.py` builds each ZCTA's 24h curve it tries sources in order:
+
+1. **Open-Meteo `us_aqi`** (CAMS-derived, hourly, keyless) — true hourly per ZCTA centroid
+2. **AirNow daily peak** (per ZCTA) shaped by our diurnal model — when Open-Meteo unavailable
+3. **Current AirNow observation** anchored by diurnal — last-resort live source
+4. **Hand-tuned hero overrides** applied LAST regardless of upstream source
+
+Each ZCTA's `source` field reports which layer produced its values, so dev tools / README readers can trace any number back to its origin.
+
 ## Architecture
 
 ```
 scripts/
 ├── lib/
 │   ├── aqi.py            # EPA band classifier — 0-50 good, 51-100 moderate, etc.
-│   ├── diurnal.py        # 24h forecast curve when AirNow returns nothing for a ZIP
+│   ├── diurnal.py        # 24h forecast shape (NYC-local rush patterns)
 │   ├── grid.py           # NYC bbox → 200m lat/lon grid, haversine distance
 │   ├── idw.py            # Inverse-distance-weighting interpolation, k=8 power=2
-│   └── airnow.py         # AirNow API client + offline fixture fallback + rate guard
+│   ├── airnow.py         # AirNow API client + offline fixture fallback + rate guard
+│   └── open_meteo.py     # Open-Meteo client (keyless): hourly air quality + weather
 ├── tests/                # pytest suite — 42 tests, all green
 ├── fixtures/
 │   ├── airnow_observations.json   # 12 synthetic NYC sensors

@@ -92,7 +92,7 @@ const features = grid.cells.map(c => ({
 | Field | Type | Notes |
 |---|---|---|
 | `horizon_hours` | int | Always 24 for the demo |
-| `zctas[code].source` | enum | `airnow_forecast \| diurnal_fallback \| hand_tuned` — surfaced in dev tools, never in UI |
+| `zctas[code].source` | enum | `open_meteo_hourly \| airnow_daily_plus_diurnal \| current_obs_plus_diurnal \| hand_tuned` — surfaced in dev tools, never in UI |
 | `zctas[code].hourly[]` | array of 24 | Always exactly 24 entries; ordered by `hour_offset` ascending |
 | `hour_offset` | int | 0 = `generated_at` hour, 23 = 23h ahead |
 | `iso_hour` | ISO 8601 UTC | Top-of-hour timestamp |
@@ -135,7 +135,34 @@ This is documented openly — judges who read the README will see "hero forecast
 
 ---
 
-## 3. `er-by-zcta.json` — owned by Person A
+## 3. `weather.json` — city-wide hourly weather (consumed by Person D for copy + B for XGBoost)
+
+**Purpose**: Hourly temp/wind/humidity for the next 24 hours. NYC weather is roughly uniform across boroughs — one centroid pull keeps the data layer simple.
+
+```jsonc
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-25T18:00:00Z",
+  "source": "Open-Meteo (https://open-meteo.com)",
+  "centroid": [40.7128, -74.0060],
+  "hourly": [
+    { "hour_offset": 0, "temp_f": 78.5, "wind_mph": 6.2, "humidity": 60 }
+  ]
+}
+```
+
+### How Person D consumes this
+
+```ts
+// "Walk our route — 78°F, light wind. Diego would breathe 38% less pollution."
+const w: WeatherForecast = await fetch('/data/weather.json').then(r => r.json());
+const now = w.hourly[scrubberHour];
+const copy = `${now.temp_f}°F, ${now.wind_mph} mph wind`;
+```
+
+---
+
+## 4. `er-by-zcta.json` — owned by Person A
 
 Produced by `scripts/ingest_er.py`. Live path is opt-in (set `NYC_DOHMH_RESOURCE_ID` + `NYC_OPEN_DATA_APP_TOKEN`); offline path reads `scripts/fixtures/dohmh_asthma_ed.json`.
 
@@ -163,7 +190,7 @@ Produced by `scripts/ingest_er.py`. Live path is opt-in (set `NYC_DOHMH_RESOURCE
 ### H4 granularity decision (locked)
 Per-ZCTA, not per-UHF-neighborhood. Rationale: ZCTA aligns with Mapbox's geocoded `postcode` so the runtime lookup is `zctas[postcode]` with no point-in-polygon. Demo copy remains "your block" with a visible source line that names the unit ("NYC DOHMH, by ZCTA").
 
-## 4. `nyc-avg.json` — companion to `er-by-zcta.json`
+## 5. `nyc-avg.json` — companion to `er-by-zcta.json`
 
 Tiny convenience file (one number) for callers that only need the NYC pediatric average without loading the full ZCTA table.
 
@@ -176,7 +203,7 @@ Tiny convenience file (one number) for callers that only need the NYC pediatric 
 }
 ```
 
-## 5. `zcta.geojson` — ZCTA boundary FeatureCollection
+## 6. `zcta.geojson` — ZCTA boundary FeatureCollection
 
 Produced by `scripts/ingest_zctas.py`. Used **only** by the ER choropleth NICE-TO-HAVE; the must-have block-context card does not need polygons.
 
