@@ -132,11 +132,16 @@ export function MapView({
     };
   }, [routes]);
 
-  // Fly the camera to route bounds with a cinematic pitch + bearing the moment
-  // routes appear. Easing the camera (instead of jump-fitting) is the single
-  // biggest "this feels like a real product" upgrade.
+  // Fly the camera to route bounds ONCE per new route pair. We track which
+  // pair we've already auto-fit so manual zoom/pan after the fit isn't yanked
+  // back when the user interacts. Without this guard, a state change anywhere
+  // in the parent re-fires flyTo and steals the camera mid-pinch.
+  const lastFitKeyRef = useRef<string>('');
   useEffect(() => {
     if (!routes || !mapRef.current || !styleReady) return;
+    const fitKey = `${routes.pair.from.lon},${routes.pair.from.lat}->${routes.pair.to.lon},${routes.pair.to.lat}`;
+    if (lastFitKeyRef.current === fitKey) return;
+    lastFitKeyRef.current = fitKey;
     const all = [
       ...routes.routes.standard.geometry.coordinates,
       ...routes.routes.atlas.geometry.coordinates,
@@ -153,7 +158,7 @@ export function MapView({
     const map = mapRef.current.getMap();
     const camera = map.cameraForBounds(
       [[minLon, minLat], [maxLon, maxLat]],
-      { padding: 64, maxZoom: 16.5 },
+      { padding: 80, maxZoom: 17 },
     );
     if (!camera || !camera.center) return;
     map.flyTo({
@@ -200,11 +205,17 @@ export function MapView({
           pitch: 0,
           bearing: 0,
         }}
-        maxBounds={NYC_BBOX}
-        maxPitch={0}
-        dragRotate={false}
-        pitchWithRotate={false}
-        touchPitch={false}
+        // Soft bounds — a generous buffer around NYC so users can pan freely
+        // without bouncing off an invisible wall. The geocoder still clamps
+        // search to the strict NYC bbox; this is just for the map viewport.
+        maxBounds={[
+          [NYC_BBOX[0] - 0.15, NYC_BBOX[1] - 0.10],
+          [NYC_BBOX[2] + 0.15, NYC_BBOX[3] + 0.10],
+        ]}
+        // Allow real Google-Maps-style zooming. Mapbox Standard's 3D buildings
+        // shine at zoom 17-19, where you can read shopfront signs.
+        minZoom={9}
+        maxZoom={20}
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}
         onLoad={() => setStyleReady(true)}
