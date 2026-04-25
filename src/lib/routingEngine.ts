@@ -13,6 +13,7 @@
 // query isn't fired twice during a demo flurry.
 
 import { scoreRoute, sharedEdgeRatio, type ScoredRoute } from './routeScoring';
+import { pruneBacktracks } from './pruneBacktracks';
 
 const MAPBOX_BASE = 'https://api.mapbox.com/directions/v5/mapbox/walking';
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
@@ -169,19 +170,36 @@ export async function planRoutes(
           const resp = await fetchDirections([origin, wp, destination], signal);
           const r = resp.routes[0];
           if (r.distance > stdRoute.distance * MAX_DISTANCE_RATIO) continue;
-          const sc = await scoreRoute(r.geometry.coordinates, r.duration);
-          const sed = sharedEdgeRatio(stdRoute.geometry.coordinates, r.geometry.coordinates);
+
+          // Mapbox waypoint routes occasionally produce out-and-back spikes
+          // (route walks along a street, hits the waypoint, walks back along
+          // the same street). Prune those before scoring. If pruning
+          // drastically shortens the route the function bails and returns
+          // the original — see lib/pruneBacktracks.ts.
+          const pruned = pruneBacktracks(r.geometry.coordinates);
+          const prunedCoords = pruned.coords;
+          const prunedDistanceM = pruned.prunedDistanceM;
+          // Walking pace stays constant — scale duration by the new length.
+          const distScale = prunedDistanceM / Math.max(r.distance, 1);
+          const prunedDurationS = r.duration * distScale;
+          const prunedGeometry = {
+            type: 'LineString' as const,
+            coordinates: prunedCoords,
+          };
+
+          const sc = await scoreRoute(prunedCoords, prunedDurationS);
+          const sed = sharedEdgeRatio(stdRoute.geometry.coordinates, prunedCoords);
           candidates.push({
-            coords: r.geometry.coordinates,
+            coords: prunedCoords,
             frac,
             side,
             offsetM,
             waypoint: wp,
             score: sc,
             sharedEdge: sed,
-            distance_m: r.distance,
-            duration_s: r.duration,
-            geometry: r.geometry,
+            distance_m: prunedDistanceM,
+            duration_s: prunedDurationS,
+            geometry: prunedGeometry,
             cleanerByExposureMin:
               stdScore.exposure.exposureMinutes - sc.exposure.exposureMinutes,
             cleanerByAvgAqi: stdScore.exposure.avgAqi - sc.exposure.avgAqi,
