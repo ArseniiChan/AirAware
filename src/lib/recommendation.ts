@@ -151,15 +151,6 @@ export function verdictColor(v: Recommendation['verdict']): string {
   }
 }
 
-export function verdictEmoji(v: Recommendation['verdict']): string {
-  switch (v) {
-    case 'good':
-      return '🟢';
-    case 'ok':
-      return '🟡';
-    case 'risky':
-      return '🟠';
-    case 'bad':
-      return '🔴';
-  }
-}
+// Emoji-free: callers use verdictColor + a kid initial / dot. Removing the
+// emoji helper keeps the surface clean and makes "no emojis in the app" a
+// type-checked invariant.

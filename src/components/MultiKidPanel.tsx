@@ -6,7 +6,6 @@ import { useKidsStore } from '@/store/kids';
 import {
   recommend,
   verdictColor,
-  verdictEmoji,
   type RouteOptions,
 } from '@/lib/recommendation';
 
@@ -38,15 +37,14 @@ export function MultiKidPanel({ routes }: Props) {
               className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-white/80 p-4 shadow-sm backdrop-blur transition hover:shadow-md"
             >
               <span
-                className={`mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full text-base shadow-sm ring-2 ring-white ${verdictColor(rec.verdict)}`}
+                className={`mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ring-2 ring-white ${verdictColor(rec.verdict)}`}
                 aria-hidden
               >
-                {verdictEmoji(rec.verdict)}
+                {kid.name[0]}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <span aria-hidden>{kid.emoji}</span>
-                  <span>{rec.headline}</span>
+                <div className="text-sm font-semibold text-slate-900">
+                  {rec.headline}
                 </div>
                 <p className="mt-0.5 text-xs text-slate-600">{rec.detail}</p>
               </div>

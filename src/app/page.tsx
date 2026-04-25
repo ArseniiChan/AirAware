@@ -328,13 +328,19 @@ export default function HomePage() {
               </span>
               <AddressAutocomplete
                 value={from}
-                onChange={setFrom}
+                onChange={(v) => {
+                  setFrom(v);
+                  // Typing past the picked address invalidates the locked
+                  // coordinate so the engine re-geocodes via /api/route.
+                  if (fromPick && v !== fromPick.name) setFromPick(null);
+                }}
                 onPick={(p) => {
                   setFrom(p.name);
                   setFromPick(p);
                   setRouteError(null);
                 }}
                 showCurrentLocation
+                locked={!!fromPick && fromPick.name === from}
                 placeholder="Start address"
                 className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               />
@@ -346,12 +352,16 @@ export default function HomePage() {
               </span>
               <AddressAutocomplete
                 value={to}
-                onChange={setTo}
+                onChange={(v) => {
+                  setTo(v);
+                  if (toPick && v !== toPick.name) setToPick(null);
+                }}
                 onPick={(p) => {
                   setTo(p.name);
                   setToPick(p);
                   setRouteError(null);
                 }}
+                locked={!!toPick && toPick.name === to}
                 placeholder="Target address"
                 className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               />

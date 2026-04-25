@@ -4,7 +4,7 @@
 // unhealthy air, and a small lifetime-impact estimate. Sits between the map
 // and the kid recommendation panel.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentType, type SVGProps } from 'react';
 import { useKidsStore } from '@/store/kids';
 import {
   estimateSteps,
@@ -12,6 +12,7 @@ import {
   formatWalkTime,
   lifeImpactForWalk,
 } from '@/lib/healthMath';
+import { ClockIcon, RulerIcon, StepsIcon } from '@/components/icons/Icons';
 import type { RouteOptions } from '@/lib/recommendation';
 import type { DemoRoutesPayload } from '@/lib/routesData';
 
@@ -112,7 +113,7 @@ export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
 
       {warningText && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <span aria-hidden className="mr-1">ℹ️</span>{warningText}
+          {warningText}
         </div>
       )}
 
@@ -265,9 +266,9 @@ function RouteCard({
       </header>
 
       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-        <Stat icon="⏱️" label="Walk" value={formatWalkTime(route.duration_s)} />
-        <Stat icon="📏" label="Distance" value={formatDistance(route.distance_m)} />
-        <Stat icon="👟" label="Steps" value={`~${steps.toLocaleString()}`} />
+        <Stat Icon={ClockIcon} label="Walk" value={formatWalkTime(route.duration_s)} />
+        <Stat Icon={RulerIcon} label="Distance" value={formatDistance(route.distance_m)} />
+        <Stat Icon={StepsIcon} label="Steps" value={`~${steps.toLocaleString()}`} />
       </div>
 
       <div className="mt-2 rounded-lg bg-white/60 px-2 py-1.5 text-center text-xs">
@@ -293,10 +294,20 @@ function RouteCard({
   );
 }
 
-function Stat({ icon, label, value }: { icon: string; label: string; value: string }) {
+function Stat({
+  Icon,
+  label,
+  value,
+}: {
+  Icon: ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
+  label: string;
+  value: string;
+}) {
   return (
     <div>
-      <div className="text-base leading-none" aria-hidden>{icon}</div>
+      <div className="flex justify-center text-slate-500" aria-hidden>
+        <Icon size={14} />
+      </div>
       <div className="mt-1 text-sm font-bold text-slate-900">{value}</div>
       <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
     </div>

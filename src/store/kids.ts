@@ -13,9 +13,12 @@ interface KidsState {
   setActiveKid: (id: string) => void;
 }
 
+// `emoji` field is still on KidProfile (typed at recommendation.ts) for
+// backwards compatibility with persisted localStorage state, but the UI no
+// longer renders it. New kids land with emoji=''.
 const SEED_KIDS: KidProfile[] = [
-  { id: 'maya', name: 'Maya', emoji: '🌸', age: 7, severity: 'severe' },
-  { id: 'diego', name: 'Diego', emoji: '🦖', age: 11, severity: 'mild' },
+  { id: 'maya', name: 'Maya', emoji: '', age: 7, severity: 'severe' },
+  { id: 'diego', name: 'Diego', emoji: '', age: 11, severity: 'mild' },
 ];
 
 function newId(): string {

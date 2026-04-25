@@ -26,6 +26,17 @@ import type { DemoRoutesPayload } from '@/lib/routesData';
 import { HeatmapLayer } from './HeatmapLayer';
 import { formatDistance, formatWalkTime, estimateSteps } from '@/lib/healthMath';
 import type { RouteOptions } from '@/lib/recommendation';
+import {
+  ClockIcon,
+  RulerIcon,
+  StepsIcon,
+  HazeIcon,
+  WindIcon,
+  SunIcon,
+  MoonIcon,
+  SunriseIcon,
+  SunsetIcon,
+} from '@/components/icons/Icons';
 
 interface Props {
   /** When provided, renders the standard (red) and atlas (green) polylines and
@@ -49,8 +60,11 @@ const ATLAS_GREEN = '#22c55e';
 const DARK_PRESETS = new Set<LightPreset>(['dusk', 'night']);
 
 const LIGHT_CYCLE: LightPreset[] = ['dawn', 'day', 'dusk', 'night'];
-const LIGHT_LABEL: Record<LightPreset, string> = {
-  dawn: '🌅', day: '☀️', dusk: '🌆', night: '🌙',
+const LIGHT_ICONS: Record<LightPreset, React.ComponentType<{ size?: number }>> = {
+  dawn: SunriseIcon,
+  day: SunIcon,
+  dusk: SunsetIcon,
+  night: MoonIcon,
 };
 
 type RouteKind = 'standard' | 'atlas';
@@ -304,7 +318,10 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false, o
         className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur transition hover:bg-slate-900"
         aria-label={`Lighting: ${lightPreset}. Tap to cycle.`}
       >
-        <span aria-hidden>{LIGHT_LABEL[lightPreset]}</span>
+        {(() => {
+          const Icon = LIGHT_ICONS[lightPreset];
+          return <Icon size={14} />;
+        })()}
         <span className="capitalize">{lightPreset}</span>
       </button>
     </div>
@@ -406,22 +423,22 @@ function RouteHoverCard({
       </div>
 
       <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px] text-slate-700">
-        <span>⏱️ Walk</span>
+        <span className="inline-flex items-center gap-1.5"><ClockIcon size={12} /> Walk</span>
         <span className="text-right font-semibold">{formatWalkTime(self.durationS)}</span>
-        <span>📏 Distance</span>
+        <span className="inline-flex items-center gap-1.5"><RulerIcon size={12} /> Distance</span>
         <span className="text-right font-semibold">{formatDistance(self.distanceM)}</span>
-        <span>👟 Steps</span>
+        <span className="inline-flex items-center gap-1.5"><StepsIcon size={12} /> Steps</span>
         <span className="text-right font-semibold">~{steps.toLocaleString()}</span>
       </div>
 
       <div className="space-y-0.5 border-t border-slate-200 pt-1.5 text-[10.5px]">
         <div className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-2">
-          <span className="text-slate-700">🌫️ Avg AQI</span>
+          <span className="inline-flex items-center gap-1.5 text-slate-700"><HazeIcon size={12} /> Avg AQI</span>
           <span className="text-right font-bold text-slate-900">{Math.round(self.exposure.avgAqi)}</span>
           <span className="text-right">{deltaTag(avgDelta, '', true)}</span>
         </div>
         <div className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-2">
-          <span className="text-slate-700">🌬️ Bad air</span>
+          <span className="inline-flex items-center gap-1.5 text-slate-700"><WindIcon size={12} /> Bad air</span>
           <span className="text-right font-bold text-slate-900">{self.exposure.exposureMinutes.toFixed(1)} min</span>
           <span className="text-right">{deltaTag(badAirDelta, ' min', true)}</span>
         </div>

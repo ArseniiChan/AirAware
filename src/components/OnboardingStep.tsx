@@ -3,6 +3,7 @@
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { AddressAutocomplete, type AddressPick } from './AddressAutocomplete';
 import { GeolocateError, locateMe } from '@/lib/geolocate';
+import { PinIcon } from '@/components/icons/Icons';
 
 interface Props {
   step: 1 | 2;
@@ -25,7 +26,7 @@ interface Props {
   onPick?: (pick: AddressPick) => void;
   /** Display-only: a small confirmation chip when a coordinate is locked. */
   pickedName?: string;
-  /** Show "📍 Use my location". Step 1 (origin) only — destination geolocate
+  /** Show "Use my location" with a pin icon. Step 1 (origin) only — destination geolocate
    *  doesn't make sense semantically. */
   showGeolocate?: boolean;
 }
@@ -145,7 +146,7 @@ export function OnboardingStep({
                 disabled={geoState === 'loading'}
                 className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
               >
-                <span aria-hidden>📍</span>
+                <PinIcon size={13} />
                 {geoState === 'loading' ? 'Locating…' : 'Use my location'}
               </button>
               {geoError && (

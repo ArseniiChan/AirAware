@@ -22,12 +22,11 @@ interface Feature {
   text: string;
   center: [number, number];
   context?: FeatureContext[];
-  properties?: { postcode?: string };
+  properties?: { postcode?: string; category?: string; landmark?: boolean };
+  place_type?: string[];
 }
 
 function zctaFromFeature(f: Feature): string | undefined {
-  // Mapbox returns ZIP either via context entries (id="postcode.123") or, for
-  // address-type features, via properties.postcode.
   const ctxZip = f.context?.find((c) => c.id?.startsWith('postcode'))?.text;
   return ctxZip ?? f.properties?.postcode;
 }
@@ -96,7 +95,14 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
 
   // Debounced fetch.
   useEffect(() => {
-    if (locked) return;
+    if (locked) {
+      // Hide and forget any prior suggestions so a focus event can't reopen
+      // a stale list. Without this, the results-screen autocompletes flashed
+      // dropdowns over the map on first paint.
+      setFeatures([]);
+      setOpen(false);
+      return;
+    }
     const q = value.trim();
     if (q.length < MIN_QUERY) {
       setFeatures([]);
@@ -116,10 +122,17 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
       abortRef.current = ac;
       setLoading(true);
       try {
+        // Mapbox Geocoding v5 with POI + locality types so business names
+        // ("Whole Foods", "Joe's Pizza") and parks/landmarks surface in
+        // suggestions. v6 forward dropped `poi` from supported types so v5
+        // is actually the better choice for an autocomplete that needs to
+        // include businesses. Free tier: 100k req/mo.
         const url =
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json` +
-          `?bbox=${NYC_BBOX.join(',')}&proximity=${BRONX_PROXIMITY.join(',')}&limit=5&autocomplete=true` +
-          `&types=address,poi,place,postcode,neighborhood&access_token=${MAPBOX_TOKEN}`;
+          `?bbox=${NYC_BBOX.join(',')}&proximity=${BRONX_PROXIMITY.join(',')}` +
+          `&limit=8&autocomplete=true&fuzzyMatch=true` +
+          `&types=poi,poi.landmark,address,place,locality,neighborhood,postcode` +
+          `&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url, { signal: ac.signal });
         if (!res.ok) throw new Error(`geocoder ${res.status}`);
         const json = (await res.json()) as { features: Feature[] };
@@ -183,7 +196,10 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => {
           // Open the dropdown on focus if we have suggestions OR if we can
-          // surface the "Use current location" row.
+          // surface the "Use current location" row. `locked` (parent already
+          // has a coordinate for this exact value) suppresses both — we don't
+          // want the dropdown flashing over the map on results-screen render.
+          if (locked) return;
           if (features.length > 0 || showLocateRow) setOpen(true);
         }}
         onKeyDown={handleKey}

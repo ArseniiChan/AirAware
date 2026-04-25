@@ -5,8 +5,6 @@ import { useState } from 'react';
 import { useKidsStore, SEVERITY_OPTIONS } from '@/store/kids';
 import type { Severity } from '@/lib/recommendation';
 
-const EMOJI_CHOICES = ['🌸', '🦖', '🦁', '🐢', '🦋', '🚀'];
-
 export function KidProfilePicker() {
   const t = useTranslations('kids');
   const { kids, activeKidId, setActiveKid, addKid, removeKid } = useKidsStore();
@@ -42,7 +40,16 @@ export function KidProfilePicker() {
                 : 'border-emerald-200 bg-white text-slate-800 hover:border-emerald-400'
             }`}
           >
-            <span aria-hidden>{kid.emoji}</span>
+            <span
+              aria-hidden
+              className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                kid.id === activeKidId
+                  ? 'bg-white/25 text-white'
+                  : 'bg-emerald-50 text-emerald-700'
+              }`}
+            >
+              {kid.name[0]?.toUpperCase()}
+            </span>
             <span className="font-medium">{kid.name}</span>
             <span className="text-xs opacity-70">
               {kid.age} · {kid.severity}
@@ -77,14 +84,13 @@ interface AddKidFormProps {
 function AddKidForm({ onClose, onSave }: AddKidFormProps) {
   const t = useTranslations('kids');
   const [name, setName] = useState('');
-  const [emoji, setEmoji] = useState(EMOJI_CHOICES[0]);
   const [age, setAge] = useState(8);
   const [severity, setSeverity] = useState<Severity>('moderate');
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    onSave({ name: name.trim(), emoji, age, severity });
+    onSave({ name: name.trim(), emoji: '', age, severity });
     onClose();
   }
 
@@ -114,21 +120,6 @@ function AddKidForm({ onClose, onSave }: AddKidFormProps) {
             className="mt-2 w-full"
           />
         </label>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {EMOJI_CHOICES.map((choice) => (
-          <button
-            key={choice}
-            type="button"
-            onClick={() => setEmoji(choice)}
-            aria-pressed={choice === emoji}
-            className={`text-lg rounded px-2 py-1 ${
-              choice === emoji ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200'
-            }`}
-          >
-            {choice}
-          </button>
-        ))}
       </div>
       <label className="block text-xs">
         <span className="block text-gray-600">{t('severity')}</span>

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useKidsStore } from '@/store/kids';
 import { recommend, type RouteOptions } from '@/lib/recommendation';
+import { HomeIcon } from '@/components/icons/Icons';
 
 interface Props {
   routes: RouteOptions | null;
@@ -39,9 +40,9 @@ export function StayInsideOverlay({ routes, onDismiss, autoDismissMs = 4500 }: P
       style={{ animation: 'air-fade 0.4s ease-out both' }}
     >
       <div className="max-w-sm space-y-3 text-center">
-        <p className="text-5xl" aria-hidden>
-          🔴
-        </p>
+        <div className="flex justify-center" aria-hidden>
+          <HomeIcon size={56} />
+        </div>
         <h2 id="stay-inside-headline" className="text-2xl font-bold">
           {t('headline')}
         </h2>

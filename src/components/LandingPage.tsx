@@ -2,13 +2,15 @@
 
 import { useTranslations } from 'next-intl';
 import { LanguageToggle } from './LanguageToggle';
+import { RouteIcon, KidsIcon, ForecastIcon } from './LandingFeatureIcons';
+import type { ComponentType } from 'react';
 
 interface Props {
   onStart: () => void;
   onReturning?: () => void;
 }
 
-const FEATURE_EMOJIS = ['🟢', '👧', '⏱'] as const;
+const FEATURE_ICONS: ComponentType<{ size?: number }>[] = [RouteIcon, KidsIcon, ForecastIcon];
 
 // Decorative floating dots — pure aesthetic, no semantic meaning.
 const FLOAT_DOTS = [
@@ -25,9 +27,9 @@ const FLOAT_DOTS = [
 export function LandingPage({ onStart, onReturning }: Props) {
   const t = useTranslations('landing');
   const features = [
-    { emoji: FEATURE_EMOJIS[0], title: t('feature1Title'), body: t('feature1Body') },
-    { emoji: FEATURE_EMOJIS[1], title: t('feature2Title'), body: t('feature2Body') },
-    { emoji: FEATURE_EMOJIS[2], title: t('feature3Title'), body: t('feature3Body') },
+    { Icon: FEATURE_ICONS[0], title: t('feature1Title'), body: t('feature1Body') },
+    { Icon: FEATURE_ICONS[1], title: t('feature2Title'), body: t('feature2Body') },
+    { Icon: FEATURE_ICONS[2], title: t('feature3Title'), body: t('feature3Body') },
   ];
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-emerald-50 to-sky-50">
@@ -117,7 +119,9 @@ export function LandingPage({ onStart, onReturning }: Props) {
               key={f.title}
               className="rounded-2xl border border-emerald-100 bg-white/70 p-4 text-left shadow-sm backdrop-blur"
             >
-              <div className="text-xl" aria-hidden>{f.emoji}</div>
+              <div className="text-emerald-600" aria-hidden>
+                <f.Icon size={22} />
+              </div>
               <h3 className="mt-2 text-sm font-semibold text-slate-900">{f.title}</h3>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">{f.body}</p>
             </li>
