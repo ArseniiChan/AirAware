@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { KidProfilePicker } from '@/components/KidProfilePicker';
-import { MultiKidPanel } from '@/components/MultiKidPanel';
 import { TimeScrubber, type TimeSlice } from '@/components/TimeScrubber';
 import { StayInsideOverlay } from '@/components/StayInsideOverlay';
 import { BlockContextCard } from '@/components/BlockContextCard';
@@ -11,7 +9,7 @@ import { OnboardingStep } from '@/components/OnboardingStep';
 import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
 import { MapView } from '@/components/MapView';
-import type { AddressPick } from '@/components/AddressAutocomplete';
+import { AddressAutocomplete, type AddressPick } from '@/components/AddressAutocomplete';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
@@ -271,10 +269,61 @@ export default function HomePage() {
           </h1>
         </div>
 
+        {/* Editable from/to + time scrubber, all at the top so the user can
+            iterate without going back through onboarding. */}
+        <div
+          className="rounded-2xl border border-emerald-100 bg-white/80 p-4 shadow-sm backdrop-blur"
+          style={{ animation: 'air-fade 0.6s ease-out both' }}
+        >
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+            <label className="block">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                From
+              </span>
+              <AddressAutocomplete
+                value={from}
+                onChange={setFrom}
+                onPick={(p) => {
+                  setFrom(p.name);
+                  setFromPick(p);
+                  setGeoRoutes(null);
+                  setLiveBase(null);
+                  setRouteError(null);
+                }}
+                placeholder="Start address"
+                className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
+              />
+            </label>
+            <span className="hidden text-center text-2xl text-emerald-500 sm:block">→</span>
+            <label className="block">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                To
+              </span>
+              <AddressAutocomplete
+                value={to}
+                onChange={setTo}
+                onPick={(p) => {
+                  setTo(p.name);
+                  setToPick(p);
+                  setGeoRoutes(null);
+                  setLiveBase(null);
+                  setRouteError(null);
+                }}
+                placeholder="Destination"
+                className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
+              />
+            </label>
+          </div>
+
+          <div className="mt-3">
+            <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
+          </div>
+        </div>
+
         <section
           aria-label="Map"
           className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-2xl border border-emerald-100 bg-white/70 shadow-xl shadow-emerald-500/10 backdrop-blur"
-          style={{ animation: 'air-fade 0.6s ease-out both' }}
+          style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}
         >
           <MapView routes={geoRoutes} showHeatmap />
         </section>
@@ -285,23 +334,8 @@ export default function HomePage() {
           </div>
         )}
 
-        <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
+        <div style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}>
           <BlockContextCard address={from} zcta={fromPick?.zcta} />
-        </div>
-
-        <div
-          className="rounded-2xl border border-emerald-100 bg-white/70 p-4 shadow-sm backdrop-blur"
-          style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}
-        >
-          <KidProfilePicker />
-        </div>
-
-        <div style={{ animation: 'air-fade 0.6s ease-out 0.3s both' }}>
-          <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
-        </div>
-
-        <div style={{ animation: 'air-fade 0.6s ease-out 0.4s both' }}>
-          <MultiKidPanel routes={routes} />
         </div>
 
         {!overlayDismissed && (
