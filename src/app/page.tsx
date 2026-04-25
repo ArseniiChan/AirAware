@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { TimeScrubber, type TimeSlice } from '@/components/TimeScrubber';
-import { BlockContextCard } from '@/components/BlockContextCard';
 import { OnboardingStep } from '@/components/OnboardingStep';
 import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
@@ -58,6 +57,7 @@ export default function HomePage() {
   const [timeSlice, setTimeSlice] = useState<TimeSlice>('now');
   const [geoRoutes, setGeoRoutes] = useState<DemoRoutesPayload | null>(null);
   const [liveBase, setLiveBase] = useState<RouteOptions | null>(null);
+  const [engineWarning, setEngineWarning] = useState<string | null>(null);
   const [forecast, setForecast] = useState<AqiForecast | null>(null);
   const [weather, setWeather] = useState<Awaited<ReturnType<typeof loadWeather>> | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
@@ -117,6 +117,7 @@ export default function HomePage() {
     if (step !== 'results') return;
     let cancelled = false;
     setRouteError(null);
+    setEngineWarning(null);
 
     if (isHero) {
       loadDemoRoutes()
@@ -144,6 +145,7 @@ export default function HomePage() {
           standard: engine.standard.exposure,
           atlas: engine.atlas.exposure,
         });
+        setEngineWarning(engine.meta?.warning ?? null);
         const adapted: DemoRoutesPayload = {
           schema_version: 1,
           generated_at: new Date().toISOString(),
@@ -185,6 +187,7 @@ export default function HomePage() {
     setGeoRoutes(null);
     setLiveBase(null);
     setRouteError(null);
+    setEngineWarning(null);
   }
 
   if (step === 'landing') {
@@ -308,7 +311,7 @@ export default function HomePage() {
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
             <label className="block">
               <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                🏠 Home
+                Start
               </span>
               <AddressAutocomplete
                 value={from}
@@ -318,14 +321,14 @@ export default function HomePage() {
                   setFromPick(p);
                   setRouteError(null);
                 }}
-                placeholder="Home address"
+                placeholder="Start address"
                 className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               />
             </label>
             <span className="hidden text-center text-2xl text-emerald-500 sm:block">→</span>
             <label className="block">
               <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                🏫 School
+                Target
               </span>
               <AddressAutocomplete
                 value={to}
@@ -335,7 +338,7 @@ export default function HomePage() {
                   setToPick(p);
                   setRouteError(null);
                 }}
-                placeholder="School address"
+                placeholder="Target address"
                 className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               />
             </label>
@@ -355,7 +358,7 @@ export default function HomePage() {
         </section>
 
         <div style={{ animation: 'air-fade 0.6s ease-out 0.05s both' }}>
-          <RouteSummaryCards geo={geoRoutes} exposure={routes} />
+          <RouteSummaryCards geo={geoRoutes} exposure={routes} warning={engineWarning} />
         </div>
 
         {routeError && (
@@ -363,10 +366,6 @@ export default function HomePage() {
             Couldn&rsquo;t plan this route: {routeError}. Try one of the Bronx demo presets.
           </div>
         )}
-
-        <div style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}>
-          <BlockContextCard address={from} zcta={fromPick?.zcta} />
-        </div>
 
         <style jsx>{`
           @keyframes air-fade {

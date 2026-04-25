@@ -21,9 +21,28 @@ interface Props {
   /** Per-time-slice exposure stats. Drives "minutes through unhealthy air"
    *  and the life-impact estimate. */
   exposure: RouteOptions | null;
+  /** Engine diagnostic from /api/route. Surfaces "no cleaner route found" so
+   *  identical numbers don't look like a silent UI bug. */
+  warning?: string | null;
 }
 
-export function RouteSummaryCards({ geo, exposure }: Props) {
+// Map raw engine warnings to user-facing copy. Anything we don't recognize
+// gets a generic message — never the raw string.
+function warningCopy(w: string | null | undefined): string | null {
+  if (!w) return null;
+  if (w.startsWith('no atlas candidate')) {
+    return "This walk is too short to find a meaningfully cleaner route — the standard route is the best option today.";
+  }
+  if (w.startsWith('atlas not measurably cleaner')) {
+    return "Air quality is similar across nearby routes today — the standard route is fine.";
+  }
+  if (w.startsWith('atlas shares')) {
+    return "We couldn't find a meaningfully different cleaner route for this walk.";
+  }
+  return "Couldn't find a cleaner alternative for this walk today.";
+}
+
+export function RouteSummaryCards({ geo, exposure, warning = null }: Props) {
   const activeKidId = useKidsStore((s) => s.activeKidId);
   const kids = useKidsStore((s) => s.kids);
   const activeKid = useMemo(
@@ -33,6 +52,11 @@ export function RouteSummaryCards({ geo, exposure }: Props) {
   const [showImpact, setShowImpact] = useState(false);
 
   if (!geo || !exposure) return null;
+
+  // AirAware "wins" only if its average AQI is lower than Standard's. Avg AQI
+  // is the fair air-quality metric (per-step concentration) — exposure-minutes
+  // can be higher on a longer route even when the air is cleaner.
+  const atlasCleaner = exposure.atlas.avgAqi < exposure.standard.avgAqi - 1;
 
   const std = {
     name: 'Standard',
@@ -49,25 +73,28 @@ export function RouteSummaryCards({ geo, exposure }: Props) {
     exposure: exposure.atlas,
   };
 
-  const exposureSavedMin = Math.max(
-    0,
-    Math.round((std.exposure.exposureMinutes - atlas.exposure.exposureMinutes) * 10) / 10,
-  );
   const addedMin = Math.max(
     0,
     Math.round((atlas.duration_s - std.duration_s) / 60),
   );
 
+  const warningText = warningCopy(warning);
+
   return (
     <div className="space-y-2">
       {/* Headline savings — the "why bother" line, kid-named when one is active */}
-      {exposureSavedMin > 0 && (
+      {atlasCleaner && !warningText && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           <span className="font-semibold">
-            {activeKid ? `${activeKid.name}: ` : ''}AirAware saves {exposureSavedMin} min
-          </span>{' '}
-          through unhealthy air
+            {activeKid ? `${activeKid.name}: ` : ''}AirAware route averages {Math.round(std.exposure.avgAqi - atlas.exposure.avgAqi)} AQI cleaner
+          </span>
           {addedMin > 0 && <span className="text-emerald-700"> · +{addedMin} min walk</span>}
+        </div>
+      )}
+
+      {warningText && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <span aria-hidden className="mr-1">ℹ️</span>{warningText}
         </div>
       )}
 
@@ -76,11 +103,12 @@ export function RouteSummaryCards({ geo, exposure }: Props) {
           route={std}
           kid={activeKid}
           showImpact={showImpact}
+          highlight={!atlasCleaner}
         />
         <RouteCard
           route={atlas}
           kid={activeKid}
-          highlight={exposureSavedMin > 0}
+          highlight={atlasCleaner}
           showImpact={showImpact}
         />
       </div>
@@ -226,9 +254,10 @@ function RouteCard({
 
       <div className="mt-2 rounded-lg bg-white/60 px-2 py-1.5 text-center text-xs">
         <span className="font-semibold text-slate-900">
-          {route.exposure.exposureMinutes} min
+          Avg AQI {Math.round(route.exposure.avgAqi)}
         </span>{' '}
-        <span className="text-slate-600">through unhealthy air</span>
+        <span className="text-slate-600">·</span>{' '}
+        <span className="text-slate-600">peak {Math.round(route.exposure.maxAqi)}</span>
       </div>
 
       {showImpact && impact && (

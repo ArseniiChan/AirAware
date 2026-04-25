@@ -167,6 +167,10 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
           bearing: 0,
         }}
         maxBounds={NYC_BBOX}
+        maxPitch={0}
+        dragRotate={false}
+        pitchWithRotate={false}
+        touchPitch={false}
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}
         onLoad={() => setStyleReady(true)}
@@ -243,14 +247,14 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
               latitude={routes.pair.from.lat}
               anchor="bottom"
             >
-              <PinMarker tone="origin" label="Home" />
+              <PinMarker tone="origin" label="Start" />
             </Marker>
             <Marker
               longitude={routes.pair.to.lon}
               latitude={routes.pair.to.lat}
               anchor="bottom"
             >
-              <PinMarker tone="destination" label="School" />
+              <PinMarker tone="destination" label="Target" />
             </Marker>
           </>
         )}
@@ -267,9 +271,16 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
           >
             <RouteHoverCard
               kind={hovered.kind}
-              distanceM={hovered.kind === 'standard' ? routes.routes.standard.distance_m : routes.routes.atlas.distance_m}
-              durationS={hovered.kind === 'standard' ? routes.routes.standard.duration_s : routes.routes.atlas.duration_s}
-              exposure={hovered.kind === 'standard' ? exposure.standard : exposure.atlas}
+              standard={{
+                distanceM: routes.routes.standard.distance_m,
+                durationS: routes.routes.standard.duration_s,
+                exposure: exposure.standard,
+              }}
+              atlas={{
+                distanceM: routes.routes.atlas.distance_m,
+                durationS: routes.routes.atlas.duration_s,
+                exposure: exposure.atlas,
+              }}
             />
           </Popup>
         )}
@@ -292,9 +303,9 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false }:
 
 function PinMarker({ tone, label }: { tone: 'origin' | 'destination'; label: string }) {
   const isOrigin = tone === 'origin';
-  const fill = isOrigin ? '#0f172a' : '#16a34a';
-  const ring = isOrigin ? 'ring-slate-900/30' : 'ring-emerald-500/40';
-  const icon = isOrigin ? '🏠' : '🏫';
+  const fill = isOrigin ? '#2563eb' : '#dc2626';
+  const ring = isOrigin ? 'ring-blue-600/30' : 'ring-red-600/30';
+  const icon = isOrigin ? '●' : '★';
   return (
     <div className="flex flex-col items-center" style={{ pointerEvents: 'none' }}>
       <span
@@ -330,36 +341,78 @@ function PinMarker({ tone, label }: { tone: 'origin' | 'destination'; label: str
   );
 }
 
-function RouteHoverCard({
-  kind,
-  distanceM,
-  durationS,
-  exposure,
-}: {
-  kind: RouteKind;
+interface RouteSide {
   distanceM: number;
   durationS: number;
   exposure: RouteOptions['standard'];
+}
+
+function RouteHoverCard({
+  kind,
+  standard,
+  atlas,
+}: {
+  kind: RouteKind;
+  standard: RouteSide;
+  atlas: RouteSide;
 }) {
   const isAtlas = kind === 'atlas';
-  const steps = estimateSteps(distanceM, durationS / 60);
+  const self = isAtlas ? atlas : standard;
+  const other = isAtlas ? standard : atlas;
+  const otherLabel = isAtlas ? 'Standard' : 'AirAware';
+  const steps = estimateSteps(self.distanceM, self.durationS / 60);
+
+  // Avg AQI is the fair air-quality metric (per-step concentration). Total
+  // bad-air minutes scales with walk length, so a longer cleaner route can
+  // still show more total minutes — that's misleading without context.
+  const avgDelta = self.exposure.avgAqi - other.exposure.avgAqi;
+  const badAirDelta = self.exposure.exposureMinutes - other.exposure.exposureMinutes;
+
+  function deltaTag(value: number, unit: string, lowerIsBetter = true) {
+    if (Math.abs(value) < 0.5) {
+      return <span className="text-slate-400">≈ {otherLabel}</span>;
+    }
+    const better = lowerIsBetter ? value < 0 : value > 0;
+    const cls = better ? 'text-emerald-600' : 'text-rose-600';
+    const arrow = value < 0 ? '↓' : '↑';
+    const abs = Math.abs(value);
+    const display = unit === 'min' ? abs.toFixed(1) : Math.round(abs);
+    return (
+      <span className={cls}>
+        {arrow}{display}{unit} vs {otherLabel}
+      </span>
+    );
+  }
+
   return (
-    <div className="min-w-[160px] space-y-1.5 px-1 py-0.5 text-[11px] text-slate-900">
+    <div className="min-w-[200px] space-y-1.5 px-1 py-0.5 text-[11px] text-slate-900">
       <div className="flex items-center gap-1.5 font-bold">
         <span
           className={`inline-block h-2 w-2 rounded-full ${isAtlas ? 'bg-emerald-600' : 'bg-red-600'}`}
         />
         {isAtlas ? 'AirAware route' : 'Standard route'}
       </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-slate-700">
+
+      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px] text-slate-700">
         <span>⏱️ Walk</span>
-        <span className="text-right font-semibold">{formatWalkTime(durationS)}</span>
+        <span className="text-right font-semibold">{formatWalkTime(self.durationS)}</span>
         <span>📏 Distance</span>
-        <span className="text-right font-semibold">{formatDistance(distanceM)}</span>
+        <span className="text-right font-semibold">{formatDistance(self.distanceM)}</span>
         <span>👟 Steps</span>
         <span className="text-right font-semibold">~{steps.toLocaleString()}</span>
-        <span>🌬️ Bad air</span>
-        <span className="text-right font-semibold">{exposure.exposureMinutes} min</span>
+      </div>
+
+      <div className="space-y-0.5 border-t border-slate-200 pt-1.5 text-[10.5px]">
+        <div className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-2">
+          <span className="text-slate-700">🌫️ Avg AQI</span>
+          <span className="text-right font-bold text-slate-900">{Math.round(self.exposure.avgAqi)}</span>
+          <span className="text-right">{deltaTag(avgDelta, '', true)}</span>
+        </div>
+        <div className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-2">
+          <span className="text-slate-700">🌬️ Bad air</span>
+          <span className="text-right font-bold text-slate-900">{self.exposure.exposureMinutes.toFixed(1)} min</span>
+          <span className="text-right">{deltaTag(badAirDelta, ' min', true)}</span>
+        </div>
       </div>
     </div>
   );

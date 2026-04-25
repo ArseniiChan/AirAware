@@ -12,11 +12,10 @@ export const MAP_STYLE = 'mapbox://styles/mapbox/standard';
 export const BRONX_CENTER = { longitude: -73.87, latitude: 40.84 } as const;
 export const INITIAL_ZOOM = 11;
 
-// Cinematic angle for the results screen. Buildings cast shadows toward the
-// viewer at this combo. -17° bearing rotates the grid slightly off-axis so
-// the routes don't fight the orthogonal NYC street pattern.
-export const RESULTS_PITCH = 50;
-export const RESULTS_BEARING = -17;
+// Top-down camera at all times so the heatmap and route comparison read
+// cleanly without parallax distortion.
+export const RESULTS_PITCH = 0;
+export const RESULTS_BEARING = 0;
 
 // Standard's lightPreset controls sun position + sky tinting + window glow.
 // 'day' is the safest demo default; 'dusk' is more cinematic but tints
