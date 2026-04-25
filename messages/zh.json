@@ -26,7 +26,10 @@
   },
   "blockContext": {
     "headline": "您的街区",
+    "stat": "您街区里大约每 {oneIn} 个孩子中就有 1 个去年因哮喘前往急诊。",
     "comparison": "{region}平均水平的 {factor} 倍",
+    "nycAverage": "在全纽约，每年大约每 {oneIn} 个孩子中就有 1 个因哮喘前往急诊。",
+    "outOfCoverage": "我们还没有该街区的 ZCTA 级数据——这里是全市的整体情况。",
     "source": "数据来源：纽约市卫生与心理卫生局（按 ZCTA 划分的儿童哮喘急诊就诊）"
   },
   "scrubber": {

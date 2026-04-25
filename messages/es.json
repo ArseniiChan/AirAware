@@ -26,7 +26,10 @@
   },
   "blockContext": {
     "headline": "Tu cuadra",
+    "stat": "Aproximadamente 1 de cada {oneIn} niños de tu cuadra fue a urgencias por asma el año pasado.",
     "comparison": "{factor}× el promedio de {region}",
+    "nycAverage": "En toda NYC, aproximadamente 1 de cada {oneIn} niños va a urgencias por asma cada año.",
+    "outOfCoverage": "Aún no tenemos datos por ZCTA para esa cuadra — aquí va el panorama de toda la ciudad.",
     "source": "Fuente: NYC DOHMH (visitas pediátricas a urgencias por asma, por ZCTA)"
   },
   "scrubber": {

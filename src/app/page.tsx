@@ -205,7 +205,7 @@ export default function HomePage() {
       )}
 
       <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
-        <BlockContextCard />
+        <BlockContextCard address={from} />
       </div>
 
       <div style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}>

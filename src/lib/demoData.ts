@@ -27,11 +27,5 @@ export const HERO_ROUTES_BY_TIME: Record<TimeSlice, RouteOptions> = {
   },
 };
 
-export const HERO_BLOCK_CONTEXT = {
-  // Placeholder until Person A wires real ZCTA → ER count lookup.
-  // "About 1 in 24 kids on your block went to the ER for asthma last year."
-  ratePer1k: 42,        // ~1 in 24
-  comparisonFactor: 4.5,
-  region: 'NYC',
-  zcta: '10474',
-};
+// Block-level ER context now reads live from public/data/er-by-zcta.json
+// via src/lib/erLookup.ts — see BlockContextCard.tsx.

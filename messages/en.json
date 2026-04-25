@@ -26,7 +26,10 @@
   },
   "blockContext": {
     "headline": "Your block",
+    "stat": "About 1 in {oneIn} kids on your block went to the ER for asthma last year.",
     "comparison": "{factor}× the {region} average",
+    "nycAverage": "Across NYC, about 1 in {oneIn} kids visit the ER for asthma each year.",
+    "outOfCoverage": "We don't have ZCTA-level data for that block yet — here's the citywide picture.",
     "source": "Source: NYC DOHMH (asthma ED visits, ages 0–17, by ZCTA)"
   },
   "scrubber": {
