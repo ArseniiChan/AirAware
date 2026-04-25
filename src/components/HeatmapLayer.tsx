@@ -37,7 +37,10 @@ async function loadGridGeoJson(url: string): Promise<GeoJSON.FeatureCollection> 
   if (cached) return cached;
   let inflight = inflightCache.get(url);
   if (!inflight) {
-    inflight = fetch(url, { cache: 'force-cache' })
+    // 'no-cache' = always validate with server; doesn't bypass cache
+    // entirely but ensures we never serve a stale aqi-grid.json after
+    // the pipeline regenerates the file.
+    inflight = fetch(url, { cache: 'no-cache' })
       .then((r) => {
         if (!r.ok) throw new Error(`${url} load: ${r.status}`);
         return r.json() as Promise<AqiGridFile>;
@@ -106,58 +109,57 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
         type="heatmap"
         slot="bottom"
         paint={{
-          // Every cell contributes — clean cells lightly, dirty cells loudly.
+          // Only AQI ≥ 60 contributes. Below that, weight = 0 → cell adds
+          // nothing → basemap shows through (clean blocks are clear, not
+          // tinted yellow). The pollution-relevant signal carries the color.
           'heatmap-weight': [
             'interpolate', ['linear'], ['get', 'aqi'],
-            0,   0.05,
-            40,  0.12,
-            70,  0.25,
-            95,  0.40,
-            120, 0.60,
-            140, 0.80,
+            60,  0,
+            75,  0.10,
+            95,  0.30,
+            120, 0.55,
+            145, 0.80,
             180, 1.0,
           ],
-          // Intensity tracks the radius growth — as the kernel widens at
-          // high zoom, per-pixel density drops; intensity bumps it back up
-          // so the gradient stays visible and the circles don't darken.
+          // Intensity tracks radius growth so colors stay visible at high
+          // zoom even though kernel area gets bigger.
           'heatmap-intensity': [
             'interpolate', ['linear'], ['zoom'],
-            8,  0.6,
-            11, 1.0,
-            13, 1.4,
-            15, 2.2,
-            17, 3.4,
+            8,  0.7,
+            11, 1.1,
+            13, 1.6,
+            15, 2.4,
+            17, 3.6,
           ],
-          // Color ramp — amber at low density through deep red at high.
-          // Start with a tiny non-zero alpha so even very low density has
-          // a soft tint (whole city colored, no transparent gaps).
+          // Color ramp starts FULLY TRANSPARENT at low density — bleeding
+          // kernels from boundary cells fade to invisible over NJ / outer
+          // boroughs. Polluted areas burn through visibly.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
-            0,    'rgba(254, 230, 138, 0)',
-            0.05, 'rgba(254, 230, 138, 0.35)', // pale amber
-            0.20, 'rgba(252, 211, 77, 0.55)',  // soft yellow
-            0.35, 'rgba(251, 191, 36, 0.65)',  // gold
-            0.50, 'rgba(251, 146, 60, 0.75)',  // orange
-            0.65, 'rgba(249, 115, 22, 0.82)',  // dark orange
-            0.78, 'rgba(239, 68, 68, 0.88)',   // red
-            0.90, 'rgba(220, 38, 38, 0.92)',   // dark red
-            1.0,  'rgba(127, 29, 29, 0.94)',   // hazardous deep red
+            0,    'rgba(0, 0, 0, 0)',
+            0.05, 'rgba(254, 230, 138, 0)',
+            0.15, 'rgba(252, 211, 77, 0.35)',
+            0.30, 'rgba(251, 191, 36, 0.55)',
+            0.50, 'rgba(251, 146, 60, 0.72)',
+            0.65, 'rgba(249, 115, 22, 0.82)',
+            0.80, 'rgba(239, 68, 68, 0.88)',
+            0.92, 'rgba(220, 38, 38, 0.92)',
+            1.0,  'rgba(127, 29, 29, 0.94)',
           ],
-          // Radius doubles each zoom level so kernels keep overlapping their
-          // 200m-spaced neighbors at every zoom. Without this, at zoom 15+
-          // each cell renders as its own discrete circle — the "bunch of
-          // circles" the user complained about. 200m on screen ≈ 21px @ z13,
-          // 84px @ z15, 336px @ z17 → radius needs to roughly match.
+          // Tighter radius schedule. Big enough to overlap 200m-spaced
+          // neighbors but not so big it smears across the Hudson. At z14,
+          // 200m ≈ 42px on screen → radius 48 = ~1.1x cell spacing → just
+          // enough overlap to look smooth without wide bleed.
           'heatmap-radius': [
-            'interpolate', ['exponential', 2], ['zoom'],
-            8,  6,
-            10, 16,
-            12, 48,
-            14, 160,
-            16, 600,
-            18, 1024,
+            'interpolate', ['exponential', 1.6], ['zoom'],
+            8,  4,
+            10, 10,
+            12, 24,
+            14, 48,
+            16, 120,
+            18, 280,
           ],
-          'heatmap-opacity': 0.85,
+          'heatmap-opacity': 0.9,
         }}
       />
     </Source>
