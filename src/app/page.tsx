@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { KidProfilePicker } from '@/components/KidProfilePicker';
 import { MultiKidPanel } from '@/components/MultiKidPanel';
@@ -39,7 +38,6 @@ function isHeroPair(from: string, to: string): boolean {
 }
 
 export default function HomePage() {
-  const t = useTranslations();
   const [step, setStep] = useState<Step>('landing');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -216,62 +214,89 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-4 px-4 py-4">
-      <header className="flex items-center justify-between">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-emerald-50 to-sky-50">
+      {/* Soft radial glow behind the map area (echoes the landing page) */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-32 h-[520px] w-[520px] -translate-x-1/2 rounded-full opacity-50"
+        style={{
+          background: 'radial-gradient(closest-side, rgba(74,222,128,0.22), rgba(74,222,128,0) 70%)',
+        }}
+      />
+
+      <header className="flex items-center justify-between px-6 pt-6">
         <button
           type="button"
           onClick={reset}
-          className="text-left transition hover:opacity-70"
+          className="text-2xl font-extrabold tracking-tight transition hover:opacity-80"
           aria-label="Start over"
         >
-          <h1 className="text-xl font-bold tracking-tight">{t('appName')}</h1>
-          <p className="text-xs text-gray-500">
-            {from.split(',')[0]} → {to.split(',')[0]}
-          </p>
+          <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
+            AirAware
+          </span>
         </button>
         <LanguageToggle />
       </header>
 
-      <section
-        aria-label="Map"
-        className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
-        style={{ animation: 'air-fade 0.6s ease-out both' }}
-      >
-        <MapView routes={geoRoutes} showHeatmap />
-      </section>
-
-      {routeError && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          Couldn&rsquo;t plan this route: {routeError}. Try one of the Bronx demo presets.
+      <main className="relative z-10 mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-6 pt-4">
+        <div className="text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-600">
+            Your route
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+            <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
+              {from.split(',')[0]}
+            </span>
+            <span className="px-2 text-slate-400">→</span>
+            <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
+              {to.split(',')[0]}
+            </span>
+          </h1>
         </div>
-      )}
 
-      <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
-        <BlockContextCard address={from} zcta={fromPick?.zcta} />
-      </div>
+        <section
+          aria-label="Map"
+          className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-2xl border border-emerald-100 bg-white/70 shadow-xl shadow-emerald-500/10 backdrop-blur"
+          style={{ animation: 'air-fade 0.6s ease-out both' }}
+        >
+          <MapView routes={geoRoutes} showHeatmap />
+        </section>
 
-      <div style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}>
-        <KidProfilePicker />
-      </div>
+        {routeError && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 backdrop-blur">
+            Couldn&rsquo;t plan this route: {routeError}. Try one of the Bronx demo presets.
+          </div>
+        )}
 
-      <div style={{ animation: 'air-fade 0.6s ease-out 0.3s both' }}>
-        <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
-      </div>
+        <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
+          <BlockContextCard address={from} zcta={fromPick?.zcta} />
+        </div>
 
-      <div style={{ animation: 'air-fade 0.6s ease-out 0.4s both' }}>
-        <MultiKidPanel routes={routes} />
-      </div>
+        <div
+          className="rounded-2xl border border-emerald-100 bg-white/70 p-4 shadow-sm backdrop-blur"
+          style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}
+        >
+          <KidProfilePicker />
+        </div>
 
-      {!overlayDismissed && (
-        <StayInsideOverlay routes={routes} onDismiss={() => setOverlayDismissed(true)} />
-      )}
+        <div style={{ animation: 'air-fade 0.6s ease-out 0.3s both' }}>
+          <TimeScrubber value={timeSlice} onChange={setTimeSlice} />
+        </div>
 
-      <style jsx>{`
-        @keyframes air-fade {
-          from { transform: translateY(12px); opacity: 0; }
-          to   { transform: translateY(0);    opacity: 1; }
-        }
-      `}</style>
-    </main>
+        <div style={{ animation: 'air-fade 0.6s ease-out 0.4s both' }}>
+          <MultiKidPanel routes={routes} />
+        </div>
+
+        {!overlayDismissed && (
+          <StayInsideOverlay routes={routes} onDismiss={() => setOverlayDismissed(true)} />
+        )}
+
+        <style jsx>{`
+          @keyframes air-fade {
+            from { transform: translateY(12px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+          }
+        `}</style>
+      </main>
+    </div>
   );
 }

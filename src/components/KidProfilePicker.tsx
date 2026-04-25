@@ -15,14 +15,14 @@ export function KidProfilePicker() {
   return (
     <section aria-labelledby="kids-title" className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 id="kids-title" className="text-sm font-semibold text-gray-700">
+        <h2 id="kids-title" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
           {t('title')}
         </h2>
         {kids.length < 3 && (
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="text-xs font-medium text-gray-600 hover:text-gray-900"
+            className="text-xs font-medium text-emerald-700 hover:text-emerald-900"
           >
             + {t('add')}
           </button>
@@ -36,10 +36,10 @@ export function KidProfilePicker() {
             type="button"
             onClick={() => setActiveKid(kid.id)}
             aria-pressed={kid.id === activeKidId}
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm shadow-sm transition ${
               kid.id === activeKidId
-                ? 'border-gray-900 bg-gray-900 text-white'
-                : 'border-gray-300 bg-white text-gray-800 hover:border-gray-500'
+                ? 'border-emerald-600 bg-gradient-to-br from-emerald-600 to-sky-600 text-white shadow-emerald-500/30'
+                : 'border-emerald-200 bg-white text-slate-800 hover:border-emerald-400'
             }`}
           >
             <span aria-hidden>{kid.emoji}</span>

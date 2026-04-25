@@ -21,7 +21,7 @@ export function MultiKidPanel({ routes }: Props) {
 
   if (!routes) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
+      <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-white/50 p-4 text-sm text-slate-500 backdrop-blur">
         Pick a home and a destination to see a route.
       </div>
     );
@@ -35,20 +35,20 @@ export function MultiKidPanel({ routes }: Props) {
           return (
             <article
               key={kid.id}
-              className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+              className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-white/80 p-4 shadow-sm backdrop-blur transition hover:shadow-md"
             >
               <span
-                className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-white ${verdictColor(rec.verdict)}`}
+                className={`mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full text-base shadow-sm ring-2 ring-white ${verdictColor(rec.verdict)}`}
                 aria-hidden
               >
                 {verdictEmoji(rec.verdict)}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <span aria-hidden>{kid.emoji}</span>
                   <span>{rec.headline}</span>
                 </div>
-                <p className="mt-0.5 text-xs text-gray-600">{rec.detail}</p>
+                <p className="mt-0.5 text-xs text-slate-600">{rec.detail}</p>
               </div>
             </article>
           );
@@ -58,21 +58,21 @@ export function MultiKidPanel({ routes }: Props) {
       <button
         type="button"
         onClick={() => setShowDetails((v) => !v)}
-        className="text-xs font-medium text-gray-500 hover:text-gray-900"
+        className="text-xs font-medium text-emerald-700 hover:text-emerald-900"
       >
         {showDetails ? '▾' : '▸'} {t('details')}
       </button>
 
       {showDetails && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-2xl border border-emerald-100 bg-white/60 p-3 text-xs text-slate-700 backdrop-blur">
           <dt>{t('standardRoute')} — {t('exposureMinutes')}</dt>
-          <dd className="text-right font-medium">{routes.standard.exposureMinutes} min</dd>
+          <dd className="text-right font-semibold text-slate-900">{routes.standard.exposureMinutes} min</dd>
           <dt>{t('atlasRoute')} — {t('exposureMinutes')}</dt>
-          <dd className="text-right font-medium">{routes.atlas.exposureMinutes} min</dd>
+          <dd className="text-right font-semibold text-slate-900">{routes.atlas.exposureMinutes} min</dd>
           <dt>{t('standardRoute')} — max AQI</dt>
-          <dd className="text-right font-medium">{routes.standard.maxAqi}</dd>
+          <dd className="text-right font-semibold text-slate-900">{routes.standard.maxAqi}</dd>
           <dt>{t('atlasRoute')} — max AQI</dt>
-          <dd className="text-right font-medium">{routes.atlas.maxAqi}</dd>
+          <dd className="text-right font-semibold text-slate-900">{routes.atlas.maxAqi}</dd>
         </dl>
       )}
     </div>

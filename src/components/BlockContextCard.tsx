@@ -32,43 +32,52 @@ export function BlockContextCard({ address, zcta }: BlockContextCardProps) {
     return (
       <article
         aria-labelledby="block-context-headline"
-        className="rounded-lg border-l-4 border-red-500 bg-red-50 p-4 text-sm shadow-sm"
+        className="overflow-hidden rounded-2xl border border-rose-200 bg-white/80 shadow-lg shadow-rose-500/10 backdrop-blur"
       >
-        <h2
-          id="block-context-headline"
-          className="text-xs font-semibold uppercase tracking-wide text-red-700"
-        >
-          {t('headline')} · {row.name} {resolvedZcta}
-        </h2>
-        <p className="mt-1 text-base font-medium text-gray-900">
-          {t('stat', { oneIn: row.one_in_n })}
-        </p>
-        <p className="mt-1 text-sm text-red-700">
-          {t('comparison', { factor: row.ratio_to_nyc_avg, region: 'NYC' })}
-        </p>
-        <p className="mt-2 text-[10px] text-gray-500">{t('source')}</p>
+        <div className="flex">
+          <div className="w-1.5 bg-gradient-to-b from-rose-400 to-rose-600" />
+          <div className="flex-1 px-5 py-4">
+            <h2
+              id="block-context-headline"
+              className="text-[10px] font-semibold uppercase tracking-[0.2em] text-rose-600"
+            >
+              {t('headline')} · {row.name} {resolvedZcta}
+            </h2>
+            <p className="mt-1.5 text-lg font-semibold text-slate-900">
+              {t('stat', { oneIn: row.one_in_n })}
+            </p>
+            <p className="mt-1 text-sm font-medium text-rose-700">
+              {t('comparison', { factor: row.ratio_to_nyc_avg, region: 'NYC' })}
+            </p>
+            <p className="mt-3 text-[10px] text-slate-400">{t('source')}</p>
+          </div>
+        </div>
       </article>
     );
   }
 
-  // Out-of-coverage ZCTA: show the citywide stat + soft notice. Honest, never empty.
   const nycOneIn = getNycAvgOneInN();
   return (
     <article
       aria-labelledby="block-context-headline"
-      className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-4 text-sm shadow-sm"
+      className="overflow-hidden rounded-2xl border border-amber-200 bg-white/80 shadow-lg shadow-amber-500/10 backdrop-blur"
     >
-      <h2
-        id="block-context-headline"
-        className="text-xs font-semibold uppercase tracking-wide text-amber-700"
-      >
-        {t('headline')} · NYC
-      </h2>
-      <p className="mt-1 text-base font-medium text-gray-900">
-        {t('nycAverage', { oneIn: nycOneIn })}
-      </p>
-      <p className="mt-1 text-xs text-amber-700">{t('outOfCoverage')}</p>
-      <p className="mt-2 text-[10px] text-gray-500">{t('source')}</p>
+      <div className="flex">
+        <div className="w-1.5 bg-gradient-to-b from-amber-400 to-amber-600" />
+        <div className="flex-1 px-5 py-4">
+          <h2
+            id="block-context-headline"
+            className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-600"
+          >
+            {t('headline')} · NYC
+          </h2>
+          <p className="mt-1.5 text-lg font-semibold text-slate-900">
+            {t('nycAverage', { oneIn: nycOneIn })}
+          </p>
+          <p className="mt-1 text-xs text-amber-700">{t('outOfCoverage')}</p>
+          <p className="mt-3 text-[10px] text-slate-400">{t('source')}</p>
+        </div>
+      </div>
     </article>
   );
 }

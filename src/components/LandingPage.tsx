@@ -52,7 +52,11 @@ export function LandingPage({ onStart }: Props) {
 
       {/* Top bar */}
       <header className="relative z-10 flex items-center justify-between px-6 pt-6">
-        <div className="text-sm font-bold tracking-wide text-emerald-700">AirAware</div>
+        <div className="text-2xl font-extrabold tracking-tight">
+          <span className="bg-gradient-to-br from-emerald-600 to-sky-600 bg-clip-text text-transparent">
+            AirAware
+          </span>
+        </div>
         <LanguageToggle />
       </header>
 
