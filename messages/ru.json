@@ -1,0 +1,46 @@
+{
+  "appName": "AirAware",
+  "tagline": "Приложение для пеших прогулок с учётом астмы для родителей в Нью-Йорке.",
+  "addressFrom": "Откуда?",
+  "addressTo": "Куда?",
+  "findRoute": "Найти маршрут",
+  "kids": {
+    "title": "Ваши дети",
+    "add": "Добавить ребёнка",
+    "name": "Имя",
+    "age": "Возраст",
+    "severity": "Тяжесть астмы",
+    "severityMild": "Лёгкая",
+    "severityModerate": "Средняя",
+    "severitySevere": "Тяжёлая"
+  },
+  "panel": {
+    "details": "Подробности",
+    "exposureMinutes": "Минут в нездоровом воздухе",
+    "distance": "Расстояние",
+    "walkTime": "Время в пути",
+    "addedTime": "Дополнительное время по сравнению со стандартным маршрутом",
+    "steps": "Шаги",
+    "standardRoute": "Стандартный маршрут",
+    "atlasRoute": "Маршрут AirAware"
+  },
+  "blockContext": {
+    "headline": "Ваш квартал",
+    "comparison": "{factor}× выше среднего по {region}",
+    "source": "Источник: NYC DOHMH (детские обращения в скорую по астме, по ZCTA)"
+  },
+  "scrubber": {
+    "label": "Во сколько?",
+    "now": "Сейчас",
+    "noon": "Полдень",
+    "afternoon": "16:00",
+    "evening": "18:00",
+    "tomorrow": "Завтра утром"
+  },
+  "stayInside": {
+    "headline": "Сегодня оставайтесь дома",
+    "advice": "Включите очиститель воздуха. Не открывайте окна."
+  },
+  "languageToggle": "Язык",
+  "outsideNyc": "Сейчас мы охватываем 5 округов Нью-Йорка. Попробуйте одну из этих прогулок по Бронксу:"
+}

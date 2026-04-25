@@ -7,6 +7,9 @@ import { useTransition } from 'react';
 const LOCALES = [
   { code: 'en', label: 'EN' },
   { code: 'es', label: 'ES' },
+  { code: 'zh', label: '中' },
+  { code: 'ar', label: 'عر' },
+  { code: 'ru', label: 'RU' },
 ] as const;
 
 export function LanguageToggle() {

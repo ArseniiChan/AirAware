@@ -1,0 +1,46 @@
+{
+  "appName": "AirAware",
+  "tagline": "为纽约市家长打造的哮喘感知步行应用。",
+  "addressFrom": "从哪里出发？",
+  "addressTo": "到哪里去？",
+  "findRoute": "查找路线",
+  "kids": {
+    "title": "您的孩子",
+    "add": "添加孩子",
+    "name": "姓名",
+    "age": "年龄",
+    "severity": "哮喘严重程度",
+    "severityMild": "轻度",
+    "severityModerate": "中度",
+    "severitySevere": "重度"
+  },
+  "panel": {
+    "details": "详细信息",
+    "exposureMinutes": "在不健康空气中的分钟数",
+    "distance": "距离",
+    "walkTime": "步行时间",
+    "addedTime": "比标准路线多用时",
+    "steps": "步数",
+    "standardRoute": "标准路线",
+    "atlasRoute": "AirAware 路线"
+  },
+  "blockContext": {
+    "headline": "您的街区",
+    "comparison": "{region}平均水平的 {factor} 倍",
+    "source": "数据来源：纽约市卫生与心理卫生局（按 ZCTA 划分的儿童哮喘急诊就诊）"
+  },
+  "scrubber": {
+    "label": "几点？",
+    "now": "现在",
+    "noon": "中午",
+    "afternoon": "下午 4 点",
+    "evening": "下午 6 点",
+    "tomorrow": "明天上午"
+  },
+  "stayInside": {
+    "headline": "今天请待在家里",
+    "advice": "开启空气过滤器。关好窗户。"
+  },
+  "languageToggle": "语言",
+  "outsideNyc": "我们目前覆盖纽约市五个区。请尝试以下布朗克斯的步行路线："
+}

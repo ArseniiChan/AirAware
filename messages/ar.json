@@ -1,0 +1,46 @@
+{
+  "appName": "AirAware",
+  "tagline": "تطبيق مشي يراعي الربو لأهالي مدينة نيويورك.",
+  "addressFrom": "من أين؟",
+  "addressTo": "إلى أين؟",
+  "findRoute": "ابحث عن مسار",
+  "kids": {
+    "title": "أطفالك",
+    "add": "أضف طفلًا",
+    "name": "الاسم",
+    "age": "العمر",
+    "severity": "شدة الربو",
+    "severityMild": "خفيف",
+    "severityModerate": "متوسط",
+    "severitySevere": "شديد"
+  },
+  "panel": {
+    "details": "التفاصيل",
+    "exposureMinutes": "دقائق في هواء غير صحي",
+    "distance": "المسافة",
+    "walkTime": "وقت المشي",
+    "addedTime": "وقت إضافي مقارنةً بالمسار القياسي",
+    "steps": "الخطوات",
+    "standardRoute": "المسار القياسي",
+    "atlasRoute": "مسار AirAware"
+  },
+  "blockContext": {
+    "headline": "حيّك",
+    "comparison": "{factor}× متوسط {region}",
+    "source": "المصدر: NYC DOHMH (زيارات الطوارئ للأطفال بسبب الربو حسب ZCTA)"
+  },
+  "scrubber": {
+    "label": "في أي وقت؟",
+    "now": "الآن",
+    "noon": "الظهر",
+    "afternoon": "4 مساءً",
+    "evening": "6 مساءً",
+    "tomorrow": "غدًا صباحًا"
+  },
+  "stayInside": {
+    "headline": "ابقوا في المنزل اليوم",
+    "advice": "شغّلوا مرشّح الهواء. أبقوا النوافذ مغلقة."
+  },
+  "languageToggle": "اللغة",
+  "outsideNyc": "نغطّي حاليًا الأحياء الخمسة لنيويورك. جرّب إحدى هذه المشيات في برونكس:"
+}
