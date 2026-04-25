@@ -38,10 +38,12 @@ def _normalize_observation(raw):
 
 
 class AirNowClient:
-    def __init__(self, api_key=None, fixture_dir=None, rate_limit=DEFAULT_RATE_LIMIT):
+    def __init__(self, api_key=None, fixture_dir=None, rate_limit=DEFAULT_RATE_LIMIT,
+                 observations_fixture="airnow_observations.json"):
         self.api_key = api_key or os.environ.get("AIRNOW_API_KEY")
         self.fixture_dir = Path(fixture_dir) if fixture_dir else Path(__file__).parent.parent / "fixtures"
         self.rate_limit = rate_limit
+        self.observations_fixture = observations_fixture
         self._call_count = 0
         self._fixtures_cache = {}
 
@@ -67,7 +69,7 @@ class AirNowClient:
         """Return a list of {lat, lon, aqi, parameter} dicts near `zip_code`."""
         self._check_rate()
         if self.is_offline:
-            data = self._load_fixture("airnow_observations.json")
+            data = self._load_fixture(self.observations_fixture)
             return data["sensors"]
         import requests
         params = {

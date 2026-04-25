@@ -1,0 +1,18 @@
+{
+  "_comment": "Historical worst-case sensor snapshot — modeled on AQI patterns observed in NYC during the June 7 2023 Canadian wildfire smoke event (citywide AQI 400+) and the Aug 2023 heat dome (AQI 130-180 in outer-borough industrial corridors). We pick a moderated worst-case: Bronx hot spots in the unhealthy band (160-220), Manhattan moderate-to-sensitive (110-150), outer boroughs sensitive (100-130). Hotter than the default --demo-snapshot, still inside a band where the time-scrubber's 4pm clearance reads as plausible.",
+  "based_on": "NYC AQI patterns: June 7 2023 wildfire smoke + Aug 2023 heat dome",
+  "sensors": [
+    {"lat": 40.8084, "lon": -73.9171, "aqi": 218, "parameter": "PM2.5", "zip": "10454", "name": "Mott Haven"},
+    {"lat": 40.8120, "lon": -73.8800, "aqi": 232, "parameter": "PM2.5", "zip": "10474", "name": "Hunts Point"},
+    {"lat": 40.8500, "lon": -73.8800, "aqi": 178, "parameter": "PM2.5", "zip": "10458", "name": "Fordham"},
+    {"lat": 40.8600, "lon": -73.9300, "aqi": 162, "parameter": "PM2.5", "zip": "10463", "name": "Kingsbridge"},
+    {"lat": 40.7831, "lon": -73.9712, "aqi": 138, "parameter": "PM2.5", "zip": "10024", "name": "Upper West Side"},
+    {"lat": 40.7484, "lon": -73.9857, "aqi": 148, "parameter": "OZONE","zip": "10001", "name": "Midtown"},
+    {"lat": 40.7282, "lon": -73.9942, "aqi": 152, "parameter": "PM2.5", "zip": "10009", "name": "East Village"},
+    {"lat": 40.6782, "lon": -73.9442, "aqi": 132, "parameter": "PM2.5", "zip": "11216", "name": "Bed-Stuy"},
+    {"lat": 40.6500, "lon": -73.9500, "aqi": 122, "parameter": "PM2.5", "zip": "11226", "name": "Flatbush"},
+    {"lat": 40.7128, "lon": -73.8500, "aqi": 142, "parameter": "PM2.5", "zip": "11373", "name": "Elmhurst"},
+    {"lat": 40.7400, "lon": -73.7700, "aqi": 118, "parameter": "PM2.5", "zip": "11432", "name": "Jamaica"},
+    {"lat": 40.5795, "lon": -74.1502, "aqi": 102, "parameter": "PM2.5", "zip": "10301", "name": "St. George"}
+  ]
+}

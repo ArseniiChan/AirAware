@@ -1,0 +1,17 @@
+{
+  "_comment": "Synthetic OpenAQ-style sensors for offline mode. Real OpenAQ v3 returns location records with `latest` measurements per parameter. Distribution chosen to add hyperlocal variation: more sensors near major roads + bus depots in the Bronx, sparser in residential zones.",
+  "sensors": [
+    {"lat": 40.8120, "lon": -73.8810, "aqi": 152, "parameter": "PM2.5", "name": "Hunts Point Bus Depot perimeter"},
+    {"lat": 40.8095, "lon": -73.8975, "aqi": 148, "parameter": "NO2",   "name": "Bruckner Expy / Hunts Point exit"},
+    {"lat": 40.8160, "lon": -73.9040, "aqi": 132, "parameter": "PM2.5", "name": "I-87 / Cross Bronx mid"},
+    {"lat": 40.8270, "lon": -73.9200, "aqi": 118, "parameter": "PM2.5", "name": "Yankee Stadium area"},
+    {"lat": 40.8350, "lon": -73.8780, "aqi": 108, "parameter": "PM2.5", "name": "Soundview"},
+    {"lat": 40.8500, "lon": -73.9200, "aqi": 95,  "parameter": "PM2.5", "name": "University Heights"},
+    {"lat": 40.7820, "lon": -73.9620, "aqi": 76,  "parameter": "PM2.5", "name": "Central Park N"},
+    {"lat": 40.7585, "lon": -73.9870, "aqi": 90,  "parameter": "PM2.5", "name": "Times Square"},
+    {"lat": 40.7062, "lon": -74.0106, "aqi": 82,  "parameter": "PM2.5", "name": "Battery Park"},
+    {"lat": 40.6900, "lon": -73.9650, "aqi": 70,  "parameter": "PM2.5", "name": "Prospect Park"},
+    {"lat": 40.7480, "lon": -73.8850, "aqi": 88,  "parameter": "PM2.5", "name": "LIE / Maspeth"},
+    {"lat": 40.7280, "lon": -73.7910, "aqi": 64,  "parameter": "PM2.5", "name": "Jamaica"}
+  ]
+}

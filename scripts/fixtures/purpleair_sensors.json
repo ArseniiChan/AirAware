@@ -1,0 +1,30 @@
+{
+  "_comment": "Synthetic PurpleAir-style sensors for offline mode. PurpleAir's NYC density is the densest of any free network — community-deployed indoor/outdoor sensors. We model that with ~25 sensors clustered in residential blocks plus along the storyteller's hero walk corridor.",
+  "sensors": [
+    {"lat": 40.8081, "lon": -73.8979, "aqi": 158, "parameter": "PM2.5"},
+    {"lat": 40.8105, "lon": -73.8870, "aqi": 144, "parameter": "PM2.5"},
+    {"lat": 40.8133, "lon": -73.8925, "aqi": 138, "parameter": "PM2.5"},
+    {"lat": 40.8190, "lon": -73.8870, "aqi": 122, "parameter": "PM2.5"},
+    {"lat": 40.8050, "lon": -73.9100, "aqi": 134, "parameter": "PM2.5"},
+    {"lat": 40.8175, "lon": -73.9145, "aqi": 116, "parameter": "PM2.5"},
+    {"lat": 40.8260, "lon": -73.8995, "aqi": 110, "parameter": "PM2.5"},
+    {"lat": 40.8330, "lon": -73.9040, "aqi": 102, "parameter": "PM2.5"},
+    {"lat": 40.8420, "lon": -73.9180, "aqi": 96,  "parameter": "PM2.5"},
+    {"lat": 40.8540, "lon": -73.9130, "aqi": 88,  "parameter": "PM2.5"},
+    {"lat": 40.8640, "lon": -73.8870, "aqi": 92,  "parameter": "PM2.5"},
+    {"lat": 40.8770, "lon": -73.8770, "aqi": 84,  "parameter": "PM2.5"},
+    {"lat": 40.7920, "lon": -73.9710, "aqi": 78,  "parameter": "PM2.5"},
+    {"lat": 40.7780, "lon": -73.9600, "aqi": 82,  "parameter": "PM2.5"},
+    {"lat": 40.7680, "lon": -73.9530, "aqi": 86,  "parameter": "PM2.5"},
+    {"lat": 40.7510, "lon": -73.9920, "aqi": 88,  "parameter": "PM2.5"},
+    {"lat": 40.7320, "lon": -73.9880, "aqi": 92,  "parameter": "PM2.5"},
+    {"lat": 40.7180, "lon": -74.0020, "aqi": 84,  "parameter": "PM2.5"},
+    {"lat": 40.6980, "lon": -73.9530, "aqi": 72,  "parameter": "PM2.5"},
+    {"lat": 40.6850, "lon": -73.9410, "aqi": 70,  "parameter": "PM2.5"},
+    {"lat": 40.6720, "lon": -73.9620, "aqi": 66,  "parameter": "PM2.5"},
+    {"lat": 40.6580, "lon": -73.9510, "aqi": 64,  "parameter": "PM2.5"},
+    {"lat": 40.7450, "lon": -73.8770, "aqi": 80,  "parameter": "PM2.5"},
+    {"lat": 40.7370, "lon": -73.8170, "aqi": 72,  "parameter": "PM2.5"},
+    {"lat": 40.5950, "lon": -74.1450, "aqi": 56,  "parameter": "PM2.5"}
+  ]
+}

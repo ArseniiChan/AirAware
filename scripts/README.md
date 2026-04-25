@@ -72,6 +72,25 @@ python -m pytest -q
 
 42 tests across 5 modules, all TDD-built (red → green → refactor per `.claude/skills/test-driven-development`).
 
+## Sensor priority chain (the heatmap grid)
+
+`ingest_aqi.py` now pulls from three free networks and merges them, then layers a synthetic NO2 boost on cells near major arterials:
+
+1. **EPA AirNow** (regulatory grade, ~4 NYC sensors today) — most authoritative; per-ZCTA
+2. **OpenAQ v3** (~27 NYC locations including AirNow + state networks) — set `OPENAQ_API_KEY` (free signup at https://explore.openaq.org/account)
+3. **PurpleAir** (~80 community sensors today) — set `PURPLEAIR_API_KEY` (free, request at https://develop.purpleair.com/keys)
+4. **NO2 highway boost** — synthetic +20-30 AQI for cells within ~50m of I-95 / Bruckner / BQE / FDR / LIE / Major Deegan, with linear taper out to ~100m. Models the curb-side NO2 a kid actually breathes walking past a bus depot. Disabled with `--no-highway-boost`.
+
+Sources are deduped by `(lat, lon, parameter)`. AirNow > OpenAQ > PurpleAir on collisions for regulatory rigor. Today's live merge: 114 unique sensors.
+
+### Demo snapshot modes
+
+| Flag | When | What happens |
+|---|---|---|
+| (none, with keys) | Saturday rehearsal, judge probing | Live pulls from all 3 networks |
+| `--demo-snapshot` | Default committed demo asset | Synthetic Bronx-hot fixtures (49 sensors) — clean contrast for the heatmap |
+| `--historical-snapshot` | Wildfire / heat-dome demo | Worst-case fixture modeled on June 7 2023 wildfire smoke + Aug 2023 heat dome (AQI 100-220 citywide). Implies `--demo-snapshot`. Output JSON includes a `based_on` field documenting the historical reference (per PLAN.md §8.4). |
+
 ## Forecast priority chain
 
 When `ingest_aqi_forecast.py` builds each ZCTA's 24h curve it tries sources in order:
