@@ -82,74 +82,69 @@ export function HeatmapLayer() {
 
   if (!data) return null;
 
-  // Strategy:
+  // Reference: NYCCAS PM2.5 annual-average map (NYC DOHMH). Yellow-orange
+  // for clean outer boroughs, deep red for industrial corridors, with
+  // highway lines burning through as visible red threads. Our heatmap
+  // should read the same way.
   //
-  //  1. Heatmap (zoom < 12): only the WORST cells contribute. weight = 0
-  //     below AQI 70 so clean areas stay transparent. Small radius keeps
-  //     hot spots distinct rather than smearing into a uniform tint.
+  //  1. Heatmap (zoom < 11.5): TIGHT radius + AQI ≥ 100 threshold so hot
+  //     spots burn through but the rest of the city stays neutral basemap.
+  //     The prior tuning saturated the entire bbox into one tint because
+  //     every cell contributed a wide kernel.
   //
-  //  2. Polygon fills (zoom >= 11): each cell rendered as its actual 200m
-  //     square. Opacity is driven BY AQI itself (not just zoom) — polluted
-  //     cells are loud, clean cells fade into the basemap. This is what
-  //     gives the map clear hot vs clean contrast.
-  //
-  //  No outlines — they read as grid lines and obscure the data.
+  //  2. Polygon fills (zoom >= 11): primary visualization. Steep AQI-driven
+  //     opacity — clean cells transparent (basemap shows through), dirty
+  //     cells near-saturated. NO zoom-based fade — full strength once
+  //     minzoom is hit, all the way to max zoom.
   return (
     <Source id="aqi-heatmap" type="geojson" data={data} buffer={32}>
       <Layer
         id="aqi-heatmap-layer"
         type="heatmap"
         slot="bottom"
-        maxzoom={12}
+        maxzoom={11.5}
         paint={{
-          // Only sensitive+ cells (AQI >= 70) contribute meaningfully. Below
-          // that, weight = 0, so clean areas don't smear orange into reds.
+          // Only AQI ≥ 100 contributes. Moderate cells stay invisible so
+          // we don't get a citywide red blob.
           'heatmap-weight': [
             'interpolate', ['linear'], ['get', 'aqi'],
-            70,  0,
-            90,  0.25,
-            120, 0.55,
-            160, 0.85,
-            200, 1.0,
+            100, 0,
+            125, 0.30,
+            150, 0.60,
+            180, 0.85,
+            220, 1.0,
           ],
           'heatmap-intensity': [
             'interpolate', ['linear'], ['zoom'],
-            9,  0.8,
-            11, 1.1,
-            12, 1.4,
+            9,  0.7,
+            11, 1.0,
           ],
-          // Sharper transition: small density already shows orange; high
-          // density saturates to deep red. Less Gaussian middle-ground.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0,    'rgba(0,0,0,0)',
-            0.10, 'rgba(250,204,21,0)',
-            0.20, 'rgba(250,204,21,0.40)', // moderate
-            0.45, 'rgba(249,115,22,0.65)', // sensitive
-            0.70, 'rgba(220,38,38,0.78)',  // unhealthy
-            1.0,  'rgba(127,29,29,0.88)',  // hazardous
+            0.15, 'rgba(0,0,0,0)',
+            0.30, 'rgba(249,115,22,0.50)',
+            0.60, 'rgba(220,38,38,0.70)',
+            1.0,  'rgba(127,29,29,0.85)',
           ],
-          // Smaller radius keeps hot spots distinct rather than uniform
-          // citywide tint at low zoom.
+          // TIGHT radius — kernels stay small so neighbors don't merge into
+          // one tint at low zoom.
           'heatmap-radius': [
             'interpolate', ['linear'], ['zoom'],
-            9,  6,
-            10, 9,
-            11, 13,
-            12, 18,
+            9,  3,
+            10, 5,
+            11, 8,
           ],
           'heatmap-opacity': [
             'interpolate', ['linear'], ['zoom'],
-            9,  0.85,
-            11, 0.8,
-            12, 0,
+            9,  0.55,
+            11, 0.5,
+            11.5, 0,
           ],
         }}
       />
-      {/* Block-level squares from zoom 11 onward. Opacity driven by AQI value
-       *  itself: clean cells (≤AQI50) stay near-invisible at 0.10, dirty
-       *  cells (≥AQI150) ramp to 0.85. This is what gives the map clear
-       *  hot vs cold contrast — the eye reads opacity as severity. */}
+      {/* Block-level squares: the primary viz at zoom 11+. Steep
+       *  AQI-driven opacity creates the visible contrast. */}
       <Layer
         id="aqi-cells-fill"
         type="fill"
@@ -158,24 +153,27 @@ export function HeatmapLayer() {
         paint={{
           'fill-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
-             0,   '#86efac', // good
-            50,   '#fde047', // moderate
-           100,   '#fb923c', // sensitive
-           150,   '#ef4444', // unhealthy
-           200,   '#7f1d1d', // very unhealthy
+             0,   '#fef9c3', // good (very pale yellow)
+            55,   '#fde047', // moderate (yellow)
+            85,   '#facc15', // moderate (gold)
+           110,   '#fb923c', // sensitive (orange)
+           135,   '#ef4444', // unhealthy (red)
+           165,   '#b91c1c', // very unhealthy (deep red)
+           220,   '#7f1d1d', // hazardous (dark red)
           ],
+          // STEEP opacity curve drives the contrast. Clean (≤55) is barely
+          // visible; sensitive (110) hits 0.55; unhealthy (135+) saturates
+          // past 0.80 — corridors will burn through visibly.
           'fill-opacity': [
-            '*',
-            // Zoom factor: fade-in 11→13, full from 13.
-            ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 0.6, 13, 1, 16, 1],
-            // AQI factor: clean cells faint, dirty cells loud.
-            ['interpolate', ['linear'], ['get', 'aqi'],
-              0,   0.08,
-              50,  0.20,
-              100, 0.55,
-              150, 0.78,
-              200, 0.88,
-            ],
+            'interpolate', ['linear'], ['get', 'aqi'],
+            0,    0.0,
+            45,   0.05,
+            65,   0.18,
+            85,   0.35,
+            105,  0.55,
+            125,  0.72,
+            150,  0.85,
+            200,  0.92,
           ],
           'fill-antialias': false,
         }}

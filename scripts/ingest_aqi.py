@@ -201,7 +201,9 @@ def main():
 
     if not args.no_highway_boost:
         boosted_count_before = sum(1 for c in cells if c["aqi"] >= 100)
-        cells = apply_highway_boost(cells, _load_highways())
+        # Wider falloff (80m core, 160m halo) so highway corridors are visible
+        # as red lines like the NYCCAS reference map shows.
+        cells = apply_highway_boost(cells, _load_highways(), falloff_m=80)
         boosted_count_after = sum(1 for c in cells if c["aqi"] >= 100)
         print(f"NO2 highway boost: cells ≥AQI100 went {boosted_count_before} → {boosted_count_after}")
 
