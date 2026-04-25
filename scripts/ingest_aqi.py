@@ -24,6 +24,11 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 from lib.airnow import AirNowClient
 from lib.aqi import aqi_band
 from lib.grid import generate_grid
@@ -33,6 +38,9 @@ from lib.purpleair import PurpleAirClient
 from lib.nyccas import NYCCASClient
 from lib.tempo import TempoClient
 from lib.no2_boost import apply_highway_boost
+from lib.traffic import hourly_factor, PROFILES
+
+NYC_TZ = ZoneInfo("America/New_York")
 
 DEFAULT_NYC_BBOX = (-74.27, 40.49, -73.68, 40.92)
 DEFAULT_OUT = Path(__file__).parent.parent / "public" / "data" / "aqi-grid.json"
@@ -117,6 +125,14 @@ def main():
                              "Implies --demo-snapshot. Per PLAN.md §8.4.")
     parser.add_argument("--no-highway-boost", action="store_true",
                         help="Skip the synthetic NO2 highway-proximity layer.")
+    parser.add_argument("--hour", type=int, default=None,
+                        help="NYC-local hour (0-23) to model traffic intensity for. "
+                             "Defaults to current local hour. Highway boost is "
+                             "scaled by the per-profile traffic curve at this hour.")
+    parser.add_argument("--all-hours", action="store_true",
+                        help="Generate 24 grid snapshots — aqi-grid-h0.json ... "
+                             "aqi-grid-h23.json — so the time-scrubber can swap "
+                             "the heatmap between hours.")
     args = parser.parse_args()
 
     if args.demo_snapshot or args.historical_snapshot:
@@ -196,16 +212,8 @@ def main():
     if len(sensors) < 4:
         raise SystemExit("Refusing to build a grid from <4 sensors — IDW would be meaningless.")
 
-    cells = build_grid(sensors, bbox, args.spacing)
-    print(f"Built {len(cells)} grid cells at {args.spacing}m spacing")
-
-    if not args.no_highway_boost:
-        boosted_count_before = sum(1 for c in cells if c["aqi"] >= 100)
-        # Wider falloff (80m core, 160m halo) so highway corridors are visible
-        # as red lines like the NYCCAS reference map shows.
-        cells = apply_highway_boost(cells, _load_highways(), falloff_m=80)
-        boosted_count_after = sum(1 for c in cells if c["aqi"] >= 100)
-        print(f"NO2 highway boost: cells ≥AQI100 went {boosted_count_before} → {boosted_count_after}")
+    base_cells = build_grid(sensors, bbox, args.spacing)
+    print(f"Built {len(base_cells)} grid cells at {args.spacing}m spacing")
 
     fully_offline = (
         airnow.is_offline and openaq.is_offline and purpleair.is_offline
@@ -219,27 +227,56 @@ def main():
         "TEMPO" if tempo_sensors else None,
     ) if s]
     source_str = " + ".join(sources_used) if sources_used else "fixtures"
-    payload = {
-        "schema_version": 1,
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "source": f"{source_str}, IDW interpolation"
-                  + (" + NO2 highway-proximity boost" if not args.no_highway_boost else "")
-                  + (" (offline fixtures)" if fully_offline else ""),
-        "bbox": list(args.bbox),
-        "spacing_m": args.spacing,
-        "cells": cells,
-    }
-    if args.historical_snapshot:
-        payload["based_on"] = (
-            "Worst-case modeled on real NYC events: "
-            "June 7 2023 wildfire smoke (citywide AQI 400+) + Aug 2023 heat dome."
-        )
+    highways = _load_highways() if not args.no_highway_boost else []
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w") as f:
-        json.dump(payload, f, separators=(",", ":"))
-    size_kb = args.out.stat().st_size / 1024
-    print(f"Wrote {args.out} ({size_kb:.0f} KB)")
+    def write_for_hour(local_hour, out_path):
+        """Apply hour-keyed traffic factors to the highway boost and write the grid."""
+        if highways:
+            time_factors = {p: hourly_factor(local_hour, p) for p in PROFILES}
+            cells = apply_highway_boost(
+                base_cells, highways, falloff_m=80, time_factors=time_factors,
+            )
+            unhealthy = sum(1 for c in cells if c["aqi"] >= 100)
+            print(f"  hour {local_hour:02d}: traffic factors "
+                  f"{ {k: round(v, 2) for k, v in time_factors.items()} } → "
+                  f"{unhealthy} cells ≥AQI100")
+        else:
+            cells = base_cells
+
+        payload = {
+            "schema_version": 2,
+            "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "local_hour": local_hour,
+            "source": f"{source_str}, IDW interpolation"
+                      + (" + time-keyed NO2 highway-proximity boost" if highways else "")
+                      + (" (offline fixtures)" if fully_offline else ""),
+            "bbox": list(args.bbox),
+            "spacing_m": args.spacing,
+            "cells": cells,
+        }
+        if args.historical_snapshot:
+            payload["based_on"] = (
+                "Worst-case modeled on real NYC events: "
+                "June 7 2023 wildfire smoke (citywide AQI 400+) + Aug 2023 heat dome."
+            )
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w") as f:
+            json.dump(payload, f, separators=(",", ":"))
+        size_kb = out_path.stat().st_size / 1024
+        print(f"  wrote {out_path} ({size_kb:.0f} KB)")
+
+    if args.all_hours:
+        for h in range(24):
+            out_path = args.out.parent / f"aqi-grid-h{h}.json"
+            write_for_hour(h, out_path)
+        # Also write the canonical aqi-grid.json snapshot at the current local hour
+        # so the default frontend load still works.
+        now_h = datetime.now(NYC_TZ).hour
+        write_for_hour(now_h, args.out)
+    else:
+        local_hour = args.hour if args.hour is not None else datetime.now(NYC_TZ).hour
+        write_for_hour(local_hour, args.out)
 
 
 if __name__ == "__main__":

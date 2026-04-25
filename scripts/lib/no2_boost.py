@@ -65,33 +65,47 @@ def _min_distance_to_polyline(point, vertices):
     return best
 
 
-def boost_for_point(point, highways, falloff_m=50):
+def boost_for_point(point, highways, falloff_m=50, time_factors=None):
     """Return the max boost across all highways, with linear falloff from
-    `falloff_m` (full boost) to `2 * falloff_m` (zero boost).
+    `falloff_m` (full boost) to `2 * falloff_m` (zero boost). When
+    `time_factors` is a dict {profile_name: factor}, each highway's full
+    boost is scaled by the factor for its declared profile.
     """
     best_boost = 0
     for hwy in highways:
         d = _min_distance_to_polyline(point, hwy["vertices"])
         full = hwy.get("boost", 25)
+        if time_factors is not None:
+            profile = hwy.get("profile", "commuter")
+            full = full * time_factors.get(profile, 1.0)
         if d <= falloff_m:
             this = full
         elif d <= 2 * falloff_m:
             # Linear taper from full at falloff_m to 0 at 2*falloff_m
-            this = int(round(full * (1 - (d - falloff_m) / falloff_m)))
+            this = full * (1 - (d - falloff_m) / falloff_m)
         else:
             this = 0
         if this > best_boost:
             best_boost = this
-    return best_boost
+    return int(round(best_boost))
 
 
-def apply_highway_boost(cells, highways, falloff_m=50):
+def apply_highway_boost(cells, highways, falloff_m=50, time_factors=None):
     """Mutate-and-return: for each cell, add the highway boost, recompute band,
     flip dominant_pollutant to NO2 if boost > 0.
+
+    `time_factors`: optional dict like {"always_busy": 1.0, "commuter": 0.4}
+    that scales each highway's peak boost by the factor for its profile.
+    Lets the heatmap show "highways are darker at rush hour, lighter at 3am."
     """
     out = []
     for c in cells:
-        boost = boost_for_point((c["lat"], c["lon"]), highways, falloff_m=falloff_m)
+        boost = boost_for_point(
+            (c["lat"], c["lon"]),
+            highways,
+            falloff_m=falloff_m,
+            time_factors=time_factors,
+        )
         if boost <= 0:
             out.append(c)
             continue

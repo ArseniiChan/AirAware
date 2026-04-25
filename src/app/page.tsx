@@ -50,6 +50,19 @@ const HERO_TO_PICK:   AddressPick = { name: HERO_TO,   lon: -73.88689, lat: 40.8
 // reasonable Bronx-default until we wire `zcta.geojson` point-in-polygon.
 const FALLBACK_ZCTA = '10474';
 
+// Map a TimeSlice to NYC-local hour-of-day for the heatmap snapshot loader.
+// "now" resolves at runtime so 9am-now and 11pm-now both load the right
+// hour-specific grid (with that hour's traffic-volume factor baked in).
+function timeSliceToHour(slice: TimeSlice): number {
+  switch (slice) {
+    case 'now':       return new Date().getHours();
+    case 'noon':      return 12;
+    case 'afternoon': return 16;
+    case 'evening':   return 18;
+    case 'tomorrow':  return 8; // tomorrow morning
+  }
+}
+
 function isHeroPair(from: string, to: string): boolean {
   return from === HERO_FROM && to === HERO_TO;
 }
@@ -231,7 +244,12 @@ export default function HomePage() {
   }
 
   if (step === 'landing') {
-    return <LandingPage onStart={() => setStep('from')} />;
+    return (
+      <LandingPage
+        onStart={() => setStep('from')}
+        onReturning={() => setStep('results')}
+      />
+    );
   }
 
   if (step === 'from') {
@@ -407,6 +425,7 @@ export default function HomePage() {
             routes={geoRoutes}
             exposure={routes}
             showHeatmap
+            heatmapHour={timeSliceToHour(timeSlice)}
             showPollutionSources
             onLongPress={handleMapLongPress}
           />

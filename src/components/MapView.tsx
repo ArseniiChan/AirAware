@@ -47,6 +47,9 @@ interface Props {
   exposure?: RouteOptions | null;
   /** Render the AQI heatmap behind buildings. Off by default. */
   showHeatmap?: boolean;
+  /** NYC-local hour (0-23) the heatmap should reflect. Lets the time-scrubber
+   *  swap the heatmap between rush-hour and overnight snapshots. */
+  heatmapHour?: number;
   /** Render the hand-curated pollution-source halos (bus depots, highway hot
    *  spots, industrial zones). On by default when results are visible — they
    *  explain WHY the heatmap looks like it does and why the route bends. */
@@ -79,6 +82,7 @@ export function MapView({
   routes = null,
   exposure = null,
   showHeatmap = false,
+  heatmapHour,
   showPollutionSources = false,
   onLongPress,
 }: Props) {
@@ -219,7 +223,7 @@ export function MapView({
       >
         <NavigationControl position="top-right" showCompass={false} />
 
-        {showHeatmap && styleReady && <HeatmapLayer />}
+        {showHeatmap && styleReady && <HeatmapLayer hour={heatmapHour} />}
         {showPollutionSources && styleReady && <PollutionSourceLayer showLabels={false} />}
 
         {standardGeoJson && styleReady && (

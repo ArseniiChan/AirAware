@@ -25,8 +25,12 @@ interface AqiGridFile {
   cells: AqiCell[];
 }
 
-let gridCache: GeoJSON.FeatureCollection | null = null;
-let inflight: Promise<GeoJSON.FeatureCollection> | null = null;
+// Per-hour cache. The pipeline emits aqi-grid-h0.json ... aqi-grid-h23.json
+// when run with --all-hours; each hour's grid reflects that hour's traffic
+// boost (peak AM/PM rush vs overnight troughs). The default aqi-grid.json
+// is the snapshot for the current local hour.
+const gridCache = new Map<string, GeoJSON.FeatureCollection>();
+const inflightCache = new Map<string, Promise<GeoJSON.FeatureCollection>>();
 
 /** Build a closed square ring around a cell center, sized to the grid spacing. */
 function cellPolygonRing(lon: number, lat: number, spacingM: number): number[][] {
@@ -41,12 +45,14 @@ function cellPolygonRing(lon: number, lat: number, spacingM: number): number[][]
   ];
 }
 
-async function loadGridGeoJson(): Promise<GeoJSON.FeatureCollection> {
-  if (gridCache) return gridCache;
+async function loadGridGeoJson(url: string): Promise<GeoJSON.FeatureCollection> {
+  const cached = gridCache.get(url);
+  if (cached) return cached;
+  let inflight = inflightCache.get(url);
   if (!inflight) {
-    inflight = fetch('/data/aqi-grid.json', { cache: 'force-cache' })
+    inflight = fetch(url, { cache: 'force-cache' })
       .then((r) => {
-        if (!r.ok) throw new Error(`aqi-grid load: ${r.status}`);
+        if (!r.ok) throw new Error(`${url} load: ${r.status}`);
         return r.json() as Promise<AqiGridFile>;
       })
       .then((g) => {
@@ -62,23 +68,44 @@ async function loadGridGeoJson(): Promise<GeoJSON.FeatureCollection> {
             },
           })),
         };
-        gridCache = fc;
+        gridCache.set(url, fc);
+        inflightCache.delete(url);
         return fc;
       });
+    inflightCache.set(url, inflight);
   }
   return inflight;
 }
 
-export function HeatmapLayer() {
+interface HeatmapLayerProps {
+  /** Optional NYC-local hour (0-23). When provided, loads the hour-specific
+   *  grid snapshot so the heatmap reflects that hour's traffic intensity.
+   *  Falls back to /data/aqi-grid.json (the default snapshot) on miss. */
+  hour?: number;
+}
+
+export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    loadGridGeoJson()
+    const url = hour != null ? `/data/aqi-grid-h${hour}.json` : '/data/aqi-grid.json';
+    loadGridGeoJson(url)
       .then((fc) => { if (!cancelled) setData(fc); })
-      .catch((err) => { console.error('heatmap load failed', err); });
+      .catch(async (err) => {
+        // Hour-specific file may not exist yet (e.g. team hasn't run
+        // --all-hours). Fall back to the default snapshot.
+        if (hour != null) {
+          try {
+            const fc = await loadGridGeoJson('/data/aqi-grid.json');
+            if (!cancelled) setData(fc);
+            return;
+          } catch (e) { /* fall through to log */ }
+        }
+        console.error('heatmap load failed', err);
+      });
     return () => { cancelled = true; };
-  }, []);
+  }, [hour]);
 
   if (!data) return null;
 
@@ -95,16 +122,27 @@ export function HeatmapLayer() {
         type="fill"
         slot="bottom"
         paint={{
+          // Continuous hue ramp — every AQI integer maps to its own shade.
+          // 16 stops give visible perceptual difference between, say, AQI
+          // 87 and AQI 92, instead of binary band jumps.
           'fill-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
-             0,   '#fde68a', // pale amber — even clean cells get a tint
-            40,   '#fcd34d', // soft yellow
+             0,   '#fef9c3', // very pale yellow
+            20,   '#fef08a',
+            40,   '#fde047',
+            55,   '#facc15',
             70,   '#fbbf24', // gold
-            95,   '#fb923c', // orange (sensitive)
-           120,   '#f97316', // dark orange
-           140,   '#ef4444', // red (unhealthy)
-           165,   '#dc2626', // dark red
-           200,   '#7f1d1d', // hazardous
+            85,   '#f59e0b',
+           100,   '#fb923c', // orange
+           115,   '#f97316',
+           130,   '#ea580c',
+           145,   '#ef4444', // red
+           160,   '#dc2626',
+           175,   '#b91c1c',
+           195,   '#991b1b',
+           220,   '#7f1d1d', // deep red
+           260,   '#65141d',
+           320,   '#4c0519', // hazardous
           ],
           // Floor opacity 0.32 so the cleanest blocks are still visibly
           // tinted (NYCCAS-style — no transparent gaps). Steep ramp through

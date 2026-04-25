@@ -7,6 +7,7 @@ import type { ComponentType } from 'react';
 
 interface Props {
   onStart: () => void;
+  onReturning?: () => void;
 }
 
 const FEATURE_ICONS: ComponentType<{ size?: number }>[] = [RouteIcon, KidsIcon, ForecastIcon];
@@ -23,7 +24,7 @@ const FLOAT_DOTS = [
   { left: '92%', top: '38%', size: 6,  color: 'bg-emerald-400/60', delay: '2.1s' },
 ];
 
-export function LandingPage({ onStart }: Props) {
+export function LandingPage({ onStart, onReturning }: Props) {
   const t = useTranslations('landing');
   const features = [
     { Icon: FEATURE_ICONS[0], title: t('feature1Title'), body: t('feature1Body') },
@@ -62,6 +63,16 @@ export function LandingPage({ onStart }: Props) {
             AirAware
           </span>
         </div>
+        {onReturning && (
+          <button
+            type="button"
+            onClick={onReturning}
+            className="absolute left-1/2 top-7 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-emerald-200 bg-white/80 px-4 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm backdrop-blur transition hover:bg-emerald-50 hover:text-emerald-800"
+          >
+            <span>{t('returning')}</span>
+            <span aria-hidden>→</span>
+          </button>
+        )}
         <LanguageToggle />
       </header>
 
