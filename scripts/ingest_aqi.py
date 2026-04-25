@@ -233,10 +233,10 @@ def main():
         """Apply hour-keyed traffic factors to the highway boost and write the grid."""
         if highways:
             time_factors = {p: hourly_factor(local_hour, p) for p in PROFILES}
-            # Default 50m falloff (100m halo) — narrower corridor than the
-            # 80m falloff that produced the chunky-square look.
+            # 80m falloff core, 160m halo — matches the visible red corridors
+            # in the NYCCAS reference (state at commit 54d2e41 / 4:44pm).
             cells = apply_highway_boost(
-                base_cells, highways, time_factors=time_factors,
+                base_cells, highways, falloff_m=80, time_factors=time_factors,
             )
             unhealthy = sum(1 for c in cells if c["aqi"] >= 100)
             print(f"  hour {local_hour:02d}: traffic factors "
