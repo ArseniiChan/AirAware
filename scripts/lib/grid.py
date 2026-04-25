@@ -16,6 +16,30 @@ def haversine_m(p1, p2):
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(a))
 
 
+def is_likely_nyc(lat, lon):
+    """Coarse 5-borough envelope. Filters out NJ (west of the Hudson north of
+    Staten Island), Westchester (north edge), and Nassau (east edge) cells
+    that the rectangular bbox would otherwise include. Approximate but good
+    enough to keep heatmap kernels from smearing pollution into Hackensack.
+    """
+    # Long Island east of Queens — Nassau
+    if lon > -73.70:
+        return False
+    # Westchester sliver
+    if lat > 40.91 and lon > -73.84:
+        return False
+    # Main 4 boroughs (east of Hudson, south of Westchester)
+    if -74.03 <= lon <= -73.70 and 40.55 <= lat <= 40.92:
+        return True
+    # Staten Island envelope (south of Bayonne, west of Verrazano)
+    if 40.49 <= lat <= 40.65 and -74.27 <= lon <= -74.05:
+        return True
+    # Brooklyn south shoreline
+    if 40.55 <= lat <= 40.65 and -74.05 <= lon <= -73.85:
+        return True
+    return False
+
+
 def generate_grid(bbox, spacing_m=200):
     min_lon, min_lat, max_lon, max_lat = bbox
     if max_lat <= min_lat or max_lon <= min_lon:

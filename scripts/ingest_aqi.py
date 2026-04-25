@@ -31,7 +31,7 @@ except ImportError:
 
 from lib.airnow import AirNowClient
 from lib.aqi import aqi_band
-from lib.grid import generate_grid
+from lib.grid import generate_grid, is_likely_nyc
 from lib.idw import idw
 from lib.openaq import OpenAQClient
 from lib.purpleair import PurpleAirClient
@@ -86,7 +86,11 @@ def merge_sensors(*sources):
 
 
 def build_grid(sensors, bbox, spacing_m):
-    cells = generate_grid(bbox, spacing_m=spacing_m)
+    raw_cells = generate_grid(bbox, spacing_m=spacing_m)
+    # Drop cells that fall in NJ / Westchester / Long Island. Without this,
+    # the rectangular bbox includes Hackensack / Paterson / Mt Vernon /
+    # Nassau, and the heatmap kernels smear NYC pollution into them.
+    cells = [(lat, lon) for lat, lon in raw_cells if is_likely_nyc(lat, lon)]
     sensor_tuples = [(s["lat"], s["lon"], s["aqi"]) for s in sensors]
     out = []
     for lat, lon in cells:
