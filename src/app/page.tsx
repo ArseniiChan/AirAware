@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { KidProfilePicker } from '@/components/KidProfilePicker';
@@ -13,6 +13,7 @@ import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
 import { MapView } from '@/components/MapView';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
+import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 
 type Step = 'landing' | 'from' | 'to' | 'computing' | 'results';
 
@@ -26,8 +27,20 @@ export default function HomePage() {
   const [to, setTo] = useState('');
   const [timeSlice, setTimeSlice] = useState<TimeSlice>('now');
   const [overlayDismissed, setOverlayDismissed] = useState(false);
+  const [geoRoutes, setGeoRoutes] = useState<DemoRoutesPayload | null>(null);
 
   const routes = step === 'results' ? HERO_ROUTES_BY_TIME[timeSlice] : null;
+
+  // Load route geometry once we reach results. Cached at the fetch layer so
+  // re-entering results from a reset() doesn't re-download.
+  useEffect(() => {
+    if (step !== 'results' || geoRoutes) return;
+    let cancelled = false;
+    loadDemoRoutes()
+      .then((data) => { if (!cancelled) setGeoRoutes(data); })
+      .catch((err) => { console.error('demo-routes load failed', err); });
+    return () => { cancelled = true; };
+  }, [step, geoRoutes]);
 
   function reset() {
     setStep('landing');
@@ -107,7 +120,7 @@ export default function HomePage() {
         className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
         style={{ animation: 'air-fade 0.6s ease-out both' }}
       >
-        <MapView />
+        <MapView routes={geoRoutes} />
       </section>
 
       <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
