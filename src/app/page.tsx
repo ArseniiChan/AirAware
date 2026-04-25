@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { TimeScrubber, type TimeSlice } from '@/components/TimeScrubber';
-import { StayInsideOverlay } from '@/components/StayInsideOverlay';
 import { BlockContextCard } from '@/components/BlockContextCard';
 import { OnboardingStep } from '@/components/OnboardingStep';
 import { ComputingScreen } from '@/components/ComputingScreen';
@@ -55,7 +54,6 @@ export default function HomePage() {
   const [fromPick, setFromPick] = useState<AddressPick | null>(null);
   const [toPick,   setToPick]   = useState<AddressPick | null>(null);
   const [timeSlice, setTimeSlice] = useState<TimeSlice>('now');
-  const [overlayDismissed, setOverlayDismissed] = useState(false);
   const [geoRoutes, setGeoRoutes] = useState<DemoRoutesPayload | null>(null);
   const [liveBase, setLiveBase] = useState<RouteOptions | null>(null);
   const [forecast, setForecast] = useState<AqiForecast | null>(null);
@@ -165,7 +163,6 @@ export default function HomePage() {
     setTo('');
     setFromPick(null);
     setToPick(null);
-    setOverlayDismissed(false);
     setTimeSlice('now');
     setGeoRoutes(null);
     setLiveBase(null);
@@ -214,7 +211,6 @@ export default function HomePage() {
         placeholder="PS 48 — 1290 Spofford Ave, Bronx"
         ctaLabel="Find clean route"
         onSubmit={() => {
-          setOverlayDismissed(false);
           setGeoRoutes(null);
           setLiveBase(null);
           setStep('computing');
@@ -281,7 +277,7 @@ export default function HomePage() {
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
             <label className="block">
               <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                From
+                🏠 Home
               </span>
               <AddressAutocomplete
                 value={from}
@@ -291,14 +287,14 @@ export default function HomePage() {
                   setFromPick(p);
                   setRouteError(null);
                 }}
-                placeholder="Start address"
+                placeholder="Home address"
                 className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               />
             </label>
             <span className="hidden text-center text-2xl text-emerald-500 sm:block">→</span>
             <label className="block">
               <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                To
+                🏫 School
               </span>
               <AddressAutocomplete
                 value={to}
@@ -308,7 +304,7 @@ export default function HomePage() {
                   setToPick(p);
                   setRouteError(null);
                 }}
-                placeholder="Destination"
+                placeholder="School address"
                 className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               />
             </label>
@@ -340,10 +336,6 @@ export default function HomePage() {
         <div style={{ animation: 'air-fade 0.6s ease-out 0.2s both' }}>
           <BlockContextCard address={from} zcta={fromPick?.zcta} />
         </div>
-
-        {!overlayDismissed && (
-          <StayInsideOverlay routes={routes} onDismiss={() => setOverlayDismissed(true)} />
-        )}
 
         <style jsx>{`
           @keyframes air-fade {
