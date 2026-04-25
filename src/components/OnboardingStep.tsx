@@ -1,6 +1,7 @@
 'use client';
 
 import { type FormEvent, type ReactNode, useEffect, useRef } from 'react';
+import { AddressAutocomplete, type AddressPick } from './AddressAutocomplete';
 
 interface Props {
   step: 1 | 2;
@@ -14,7 +15,13 @@ interface Props {
   ctaLabel: string;
   onSubmit: () => void;
   onBack?: () => void;
-  presets?: { label: string; value: string }[];
+  presets?: { label: string; value: string; pick?: AddressPick }[];
+  /** When provided, the input becomes a Mapbox autocomplete and `onPick` fires
+   *  with [lon, lat] when the user selects a suggestion (or a preset with
+   *  baked coordinates). */
+  onPick?: (pick: AddressPick) => void;
+  /** Display-only: a small confirmation chip when a coordinate is locked. */
+  pickedName?: string;
 }
 
 export function OnboardingStep({
@@ -30,6 +37,8 @@ export function OnboardingStep({
   onSubmit,
   onBack,
   presets,
+  onPick,
+  pickedName,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -71,13 +80,31 @@ export function OnboardingStep({
         </div>
 
         <form onSubmit={submit} className="space-y-4">
-          <input
-            ref={inputRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-center text-lg shadow-lg shadow-emerald-100 outline-none ring-emerald-400 transition focus:ring-4"
-          />
+          {onPick ? (
+            <AddressAutocomplete
+              ref={inputRef}
+              value={value}
+              onChange={(v) => onChange(v)}
+              onPick={onPick}
+              placeholder={placeholder}
+              locked={!!pickedName && pickedName === value}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left text-lg shadow-lg shadow-emerald-100 outline-none ring-emerald-400 transition focus:ring-4"
+            />
+          ) : (
+            <input
+              ref={inputRef}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-center text-lg shadow-lg shadow-emerald-100 outline-none ring-emerald-400 transition focus:ring-4"
+            />
+          )}
+
+          {pickedName && pickedName === value && (
+            <p className="text-center text-xs font-medium text-emerald-700">
+              ✓ Address pinned
+            </p>
+          )}
 
           {presets && presets.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2">
@@ -85,7 +112,10 @@ export function OnboardingStep({
                 <button
                   key={p.value}
                   type="button"
-                  onClick={() => onChange(p.value)}
+                  onClick={() => {
+                    onChange(p.value);
+                    if (p.pick && onPick) onPick(p.pick);
+                  }}
                   className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
                 >
                   {p.label}
