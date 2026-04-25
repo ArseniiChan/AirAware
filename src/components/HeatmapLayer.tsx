@@ -122,13 +122,26 @@ export function HeatmapLayer({ hour }: HeatmapLayerProps = {}) {
         type="fill"
         slot="bottom"
         paint={{
+          // Continuous hue ramp — 16 stops so every AQI integer maps to its
+          // own visibly distinct shade, not just band buckets.
           'fill-color': [
             'interpolate', ['linear'], ['get', 'aqi'],
-             0,   '#86efac', // good
-            50,   '#fde047', // moderate
-           100,   '#fb923c', // sensitive
-           150,   '#ef4444', // unhealthy
-           200,   '#7f1d1d', // very unhealthy
+             0,   '#bbf7d0', // good — pale mint
+            25,   '#86efac', // good
+            45,   '#bef264', // good-moderate
+            60,   '#fde047', // moderate (yellow)
+            75,   '#facc15',
+            90,   '#fbbf24', // gold
+           105,   '#f59e0b',
+           120,   '#fb923c', // sensitive (orange)
+           135,   '#f97316',
+           150,   '#ef4444', // unhealthy (red)
+           165,   '#dc2626',
+           180,   '#b91c1c',
+           200,   '#991b1b',
+           230,   '#7f1d1d', // very unhealthy
+           280,   '#65141d',
+           340,   '#4c0519', // hazardous
           ],
           // Steep AQI-driven opacity — clean blocks fade into the basemap,
           // dirty blocks dominate. No floor (avoids the citywide tint that
