@@ -329,7 +329,69 @@
             40.81425
           ]
         ]
-      }
+      },
+      "steps": [
+        {
+          "instruction": "Walk southwest on Bruckner Boulevard.",
+          "distance_m": 13,
+          "duration_s": 9
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 31,
+          "duration_s": 29
+        },
+        {
+          "instruction": "Continue.",
+          "distance_m": 11,
+          "duration_s": 12
+        },
+        {
+          "instruction": "Continue on the walkway.",
+          "distance_m": 112,
+          "duration_s": 114
+        },
+        {
+          "instruction": "Turn right onto the walkway.",
+          "distance_m": 327,
+          "duration_s": 247
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 2,
+          "duration_s": 2
+        },
+        {
+          "instruction": "Keep right at the fork.",
+          "distance_m": 3,
+          "duration_s": 2
+        },
+        {
+          "instruction": "Keep left at the fork.",
+          "distance_m": 40,
+          "duration_s": 29
+        },
+        {
+          "instruction": "Keep right at the fork.",
+          "distance_m": 225,
+          "duration_s": 162
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 34,
+          "duration_s": 17
+        },
+        {
+          "instruction": "Turn right onto the walkway.",
+          "distance_m": 9,
+          "duration_s": 36
+        },
+        {
+          "instruction": "You have arrived at your destination.",
+          "distance_m": 0,
+          "duration_s": 0
+        }
+      ]
     },
     "atlas": {
       "description": "AQI-aware detour via residential side streets, avoiding bus-depot exposure.",
@@ -650,7 +712,84 @@
             40.81425
           ]
         ]
-      }
+      },
+      "steps": [
+        {
+          "instruction": "Walk southeast on Hunts Point Avenue.",
+          "distance_m": 104,
+          "duration_s": 88
+        },
+        {
+          "instruction": "Keep left to stay on Hunts Point Avenue.",
+          "distance_m": 21,
+          "duration_s": 27
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 14,
+          "duration_s": 11
+        },
+        {
+          "instruction": "Turn right onto the crosswalk.",
+          "distance_m": 133,
+          "duration_s": 107
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 156,
+          "duration_s": 99
+        },
+        {
+          "instruction": "Your destination is on the right.",
+          "distance_m": 0,
+          "duration_s": 0
+        },
+        {
+          "instruction": "Walk west on the walkway.",
+          "distance_m": 30,
+          "duration_s": 29
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 212,
+          "duration_s": 167
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 1,
+          "duration_s": 1
+        },
+        {
+          "instruction": "Turn right onto the walkway.",
+          "distance_m": 272,
+          "duration_s": 172
+        },
+        {
+          "instruction": "Turn right onto the walkway.",
+          "distance_m": 66,
+          "duration_s": 57
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 26,
+          "duration_s": 21
+        },
+        {
+          "instruction": "Turn right onto the walkway.",
+          "distance_m": 31,
+          "duration_s": 30
+        },
+        {
+          "instruction": "Turn left onto the walkway.",
+          "distance_m": 9,
+          "duration_s": 36
+        },
+        {
+          "instruction": "You have arrived at your destination.",
+          "distance_m": 0,
+          "duration_s": 0
+        }
+      ]
     }
   },
   "exposures_by_time": {

@@ -9,11 +9,18 @@ export interface DemoRouteGeometry {
   coordinates: [number, number][]; // [lon, lat]
 }
 
+export interface RouteStep {
+  instruction: string;   // human-readable, e.g. "Turn left onto Spofford Avenue."
+  distance_m: number;
+  duration_s: number;
+}
+
 export interface DemoRoute {
   description: string;
   distance_m: number;
   duration_s: number;
   geometry: DemoRouteGeometry;
+  steps?: RouteStep[];   // optional for backwards compat with older fixtures
 }
 
 export interface DemoRoutesPayload {

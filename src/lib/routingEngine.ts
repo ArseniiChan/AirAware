@@ -20,10 +20,40 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
 type LonLat = [number, number];
 
+interface MapboxStep {
+  distance: number;
+  duration: number;
+  name?: string;
+  maneuver?: { instruction?: string };
+}
+interface MapboxLeg {
+  steps?: MapboxStep[];
+}
 interface MapboxRoute {
   distance: number;
   duration: number;
   geometry: { type: 'LineString'; coordinates: LonLat[] };
+  legs?: MapboxLeg[];
+}
+
+export interface EngineRouteStep {
+  instruction: string;
+  distance_m: number;
+  duration_s: number;
+}
+
+function extractSteps(route: MapboxRoute): EngineRouteStep[] {
+  const out: EngineRouteStep[] = [];
+  for (const leg of route.legs ?? []) {
+    for (const s of leg.steps ?? []) {
+      out.push({
+        instruction: s.maneuver?.instruction ?? s.name ?? 'Continue',
+        distance_m: Math.round(s.distance ?? 0),
+        duration_s: Math.round(s.duration ?? 0),
+      });
+    }
+  }
+  return out;
 }
 
 interface MapboxResponse {
@@ -75,7 +105,7 @@ async function fetchDirections(coords: LonLat[], signal?: AbortSignal): Promise<
   // alley_bias=-0.3 mildly avoids alleys for kid safety.
   const url =
     `${MAPBOX_BASE}/${path}` +
-    `?alternatives=false&geometries=geojson&overview=full&steps=false` +
+    `?alternatives=false&geometries=geojson&overview=full&steps=true` +
     `&walkway_bias=1&alley_bias=-0.3` +
     `&access_token=${MAPBOX_TOKEN}`;
 
@@ -126,6 +156,7 @@ export interface EngineResult {
     duration_s: number;
     geometry: MapboxRoute['geometry'];
     exposure: ScoredRoute['exposure'];
+    steps: EngineRouteStep[];
   };
   atlas: {
     distance_m: number;
@@ -135,6 +166,7 @@ export interface EngineResult {
     waypoint?: { lon: number; lat: number };
     waypointSide?: 1 | -1;
     waypointOffsetM?: number;
+    steps: EngineRouteStep[];
   };
   divergence: { sharedEdgeRatio: number };
   meta: { engine: 'waypoint-injection-v1'; warning?: string };
@@ -162,6 +194,7 @@ export async function planRoutes(
     distance_m: number;
     duration_s: number;
     geometry: MapboxRoute['geometry'];
+    legs?: MapboxLeg[];
     cleanerByExposureMin: number; // primary user-visible metric
     cleanerByAvgAqi: number;
   }> = [];
@@ -205,6 +238,7 @@ export async function planRoutes(
             distance_m: prunedDistanceM,
             duration_s: prunedDurationS,
             geometry: prunedGeometry,
+            legs: r.legs,
             cleanerByExposureMin:
               stdScore.exposure.exposureMinutes - sc.exposure.exposureMinutes,
             cleanerByAvgAqi: stdScore.exposure.avgAqi - sc.exposure.avgAqi,
@@ -271,6 +305,7 @@ export async function planRoutes(
       duration_s: Math.round(stdRoute.duration),
       geometry: stdRoute.geometry,
       exposure: stdScore.exposure,
+      steps: extractSteps(stdRoute),
     },
     atlas: best
       ? {
@@ -281,12 +316,19 @@ export async function planRoutes(
           waypoint: { lon: best.waypoint[0], lat: best.waypoint[1] },
           waypointSide: best.side,
           waypointOffsetM: best.offsetM,
+          steps: extractSteps({
+            distance: best.distance_m,
+            duration: best.duration_s,
+            geometry: best.geometry,
+            legs: best.legs,
+          }),
         }
       : {
           distance_m: Math.round(stdRoute.distance),
           duration_s: Math.round(stdRoute.duration),
           geometry: stdRoute.geometry,
           exposure: stdScore.exposure,
+          steps: extractSteps(stdRoute),
         },
     divergence: { sharedEdgeRatio: best ? Math.round(best.sharedEdge * 100) / 100 : 1 },
     meta: { engine: 'waypoint-injection-v1', warning },

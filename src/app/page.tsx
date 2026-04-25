@@ -14,6 +14,7 @@ import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
 import { AddressAutocomplete, type AddressPick } from '@/components/AddressAutocomplete';
 import { RouteSummaryCards } from '@/components/RouteSummaryCards';
+import { RouteDirections } from '@/components/RouteDirections';
 import { Scorecard } from '@/components/Scorecard';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
@@ -177,6 +178,7 @@ export default function HomePage() {
               distance_m: engine.standard.distance_m,
               duration_s: engine.standard.duration_s,
               geometry: engine.standard.geometry,
+              steps: engine.standard.steps,
             },
             atlas: {
               description: 'AQI-aware detour.',
@@ -185,6 +187,7 @@ export default function HomePage() {
               geometry: engine.atlas.geometry,
               waypoint: engine.atlas.waypoint,
               shared_edge_ratio_with_standard: engine.divergence.sharedEdgeRatio,
+              steps: engine.atlas.steps,
             },
           },
         };
@@ -431,6 +434,18 @@ export default function HomePage() {
         <div style={{ animation: 'air-fade 0.6s ease-out 0.05s both' }}>
           <RouteSummaryCards geo={geoRoutes} exposure={routes} warning={engineWarning} />
         </div>
+
+        {geoRoutes?.routes.atlas.steps && geoRoutes.routes.atlas.steps.length > 0 && (
+          <div
+            style={{ animation: 'air-fade 0.6s ease-out 0.08s both' }}
+            className="grid gap-2 sm:grid-cols-2"
+          >
+            <RouteDirections steps={geoRoutes.routes.atlas.steps} tone="atlas" />
+            {geoRoutes.routes.standard.steps && (
+              <RouteDirections steps={geoRoutes.routes.standard.steps} tone="standard" />
+            )}
+          </div>
+        )}
 
         <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
           <Scorecard />
