@@ -11,6 +11,7 @@ import { BlockContextCard } from '@/components/BlockContextCard';
 import { OnboardingStep } from '@/components/OnboardingStep';
 import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
+import { MapView } from '@/components/MapView';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
 
 type Step = 'landing' | 'from' | 'to' | 'computing' | 'results';
@@ -102,13 +103,11 @@ export default function HomePage() {
       </header>
 
       <section
-        aria-label="Map placeholder"
-        className="relative h-56 overflow-hidden rounded-lg border border-gray-200 bg-gradient-to-br from-emerald-100 via-yellow-100 to-red-200"
+        aria-label="Map"
+        className="relative h-[55svh] min-h-[320px] overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
         style={{ animation: 'air-fade 0.6s ease-out both' }}
       >
-        <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-700">
-          Map placeholder — Person B wires Mapbox here
-        </div>
+        <MapView />
       </section>
 
       <div style={{ animation: 'air-fade 0.6s ease-out 0.1s both' }}>
