@@ -8,6 +8,21 @@ import {
 } from '@/lib/mapbox';
 import { locateMe, GeolocateError } from '@/lib/geolocate';
 
+// Mapbox Search Box API session token. The same UUID across suggest+retrieve
+// calls gets billed as one session (free tier: 1000 sessions / month). We
+// generate one per page load and rotate it whenever the dropdown closes for
+// long enough that the user is "starting a new search."
+function newSessionToken(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  // RFC4122 v4 fallback for older browsers.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 export interface AddressPick {
   name: string;     // human-readable, e.g. "1290 Spofford Ave, Bronx, New York"
   lon: number;
@@ -15,20 +30,44 @@ export interface AddressPick {
   zcta?: string;    // 5-digit NYC ZIP from feature.context (BlockContextCard uses this)
 }
 
-interface FeatureContext { id: string; text: string; }
-interface Feature {
+// Unified suggestion shape across Search Box (POI-rich) and v5 Geocoding
+// (POI-thin but always returns SOMETHING). Search Box suggestions have a
+// `mapbox_id` we retrieve later for coordinates; v5 suggestions arrive with
+// coordinates inline.
+interface Suggestion {
+  id: string;
+  text: string;        // short label (business / street name)
+  place_name: string;  // full readable address line
+  source: 'searchbox' | 'v5';
+  // Only one of these will be set. Search Box → mapbox_id, retrieved later.
+  // v5 → centerLon/centerLat, zcta inline.
+  mapbox_id?: string;
+  centerLon?: number;
+  centerLat?: number;
+  zcta?: string;
+  feature_type?: string;
+}
+
+interface V5Feature {
   id: string;
   place_name: string;
   text: string;
   center: [number, number];
-  context?: FeatureContext[];
-  properties?: { postcode?: string; category?: string; landmark?: boolean };
-  place_type?: string[];
+  context?: { id: string; text: string }[];
+  properties?: { postcode?: string };
 }
 
-function zctaFromFeature(f: Feature): string | undefined {
+function zctaFromV5(f: V5Feature): string | undefined {
   const ctxZip = f.context?.find((c) => c.id?.startsWith('postcode'))?.text;
   return ctxZip ?? f.properties?.postcode;
+}
+
+interface SearchBoxSuggestion {
+  name: string;
+  mapbox_id: string;
+  feature_type?: string;
+  place_formatted?: string;
+  full_address?: string;
 }
 
 interface Props {
@@ -58,7 +97,7 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
   { value, onChange, onPick, placeholder, className, locked = false, presetValues, showCurrentLocation = false },
   ref,
 ) {
-  const [features, setFeatures] = useState<Feature[]>([]);
+  const [features, setFeatures] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -66,6 +105,10 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
   const [locateError, setLocateError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // One Search Box session per dropdown lifecycle. Suggest+Retrieve pair share
+  // it so we burn one session, not many. Rotated when the dropdown closes
+  // for >30s — that's effectively a new search.
+  const sessionRef = useRef<string>(newSessionToken());
 
   // Show the "Use current location" pseudo-row while the user hasn't typed
   // anything substantial yet. Once they start typing real characters, the
@@ -122,22 +165,72 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
       abortRef.current = ac;
       setLoading(true);
       try {
-        // Mapbox Geocoding v5 with POI + locality types so business names
-        // ("Whole Foods", "Joe's Pizza") and parks/landmarks surface in
-        // suggestions. v6 forward dropped `poi` from supported types so v5
-        // is actually the better choice for an autocomplete that needs to
-        // include businesses. Free tier: 100k req/mo.
-        const url =
+        // Two queries in parallel:
+        //   1. Search Box Suggest — POI-rich (Joe's Pizza, Whole Foods,
+        //      bodegas, parks). Returns name + mapbox_id; we Retrieve coords
+        //      only if the user picks one. Free tier: 1000 sessions/mo;
+        //      same session_token shared with the Retrieve call = 1 session.
+        //   2. Geocoding v5 — addresses, streets, neighborhoods. Returns
+        //      coords inline so picking is one request.
+        // Merge: Search Box first (POIs are what the user usually wants),
+        // then v5 for any address-y things Search Box didn't surface.
+        const session = sessionRef.current;
+        const searchBoxUrl =
+          `https://api.mapbox.com/search/searchbox/v1/suggest` +
+          `?q=${encodeURIComponent(q)}` +
+          `&session_token=${session}` +
+          `&proximity=${BRONX_PROXIMITY.join(',')}` +
+          `&bbox=${NYC_BBOX.join(',')}` +
+          `&limit=6&language=en` +
+          `&access_token=${MAPBOX_TOKEN}`;
+        const v5Url =
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json` +
           `?bbox=${NYC_BBOX.join(',')}&proximity=${BRONX_PROXIMITY.join(',')}` +
-          `&limit=8&autocomplete=true&fuzzyMatch=true` +
-          `&types=poi,poi.landmark,address,place,locality,neighborhood,postcode` +
+          `&limit=4&autocomplete=true&fuzzyMatch=true` +
+          `&types=address,place,locality,neighborhood,postcode` +
           `&access_token=${MAPBOX_TOKEN}`;
-        const res = await fetch(url, { signal: ac.signal });
-        if (!res.ok) throw new Error(`geocoder ${res.status}`);
-        const json = (await res.json()) as { features: Feature[] };
-        setFeatures(json.features ?? []);
-        setOpen((json.features ?? []).length > 0);
+
+        const [sbRes, v5Res] = await Promise.allSettled([
+          fetch(searchBoxUrl, { signal: ac.signal }).then((r) => (r.ok ? r.json() : null)),
+          fetch(v5Url, { signal: ac.signal }).then((r) => (r.ok ? r.json() : null)),
+        ]);
+
+        const merged: Suggestion[] = [];
+
+        if (sbRes.status === 'fulfilled' && sbRes.value) {
+          const json = sbRes.value as { suggestions?: SearchBoxSuggestion[] };
+          for (const s of json.suggestions ?? []) {
+            merged.push({
+              id: `sb:${s.mapbox_id}`,
+              text: s.name,
+              place_name: s.full_address ?? `${s.name}${s.place_formatted ? `, ${s.place_formatted}` : ''}`,
+              source: 'searchbox',
+              mapbox_id: s.mapbox_id,
+              feature_type: s.feature_type,
+            });
+          }
+        }
+
+        if (v5Res.status === 'fulfilled' && v5Res.value) {
+          const json = v5Res.value as { features?: V5Feature[] };
+          for (const f of json.features ?? []) {
+            // Skip if we already have something from Search Box with the same
+            // visible label — avoids duplicate "Park Avenue" entries.
+            if (merged.some((m) => m.text === f.text)) continue;
+            merged.push({
+              id: `v5:${f.id}`,
+              text: f.text,
+              place_name: f.place_name,
+              source: 'v5',
+              centerLon: f.center[0],
+              centerLat: f.center[1],
+              zcta: zctaFromV5(f),
+            });
+          }
+        }
+
+        setFeatures(merged);
+        setOpen(merged.length > 0);
         setActiveIdx(0);
       } catch (err) {
         if ((err as { name?: string }).name === 'AbortError') return;
@@ -159,15 +252,53 @@ export const AddressAutocomplete = forwardRef<HTMLInputElement, Props>(function 
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  function pick(f: Feature) {
-    onChange(f.place_name);
-    onPick({
-      name: f.place_name,
-      lon: f.center[0],
-      lat: f.center[1],
-      zcta: zctaFromFeature(f),
-    });
+  async function pick(s: Suggestion) {
     setOpen(false);
+    onChange(s.place_name);
+    if (s.source === 'v5' && s.centerLon != null && s.centerLat != null) {
+      onPick({ name: s.place_name, lon: s.centerLon, lat: s.centerLat, zcta: s.zcta });
+      // Rotate the Search Box session for the next "search" — picking a v5
+      // result still ends the current dropdown lifecycle.
+      sessionRef.current = newSessionToken();
+      return;
+    }
+    if (s.source === 'searchbox' && s.mapbox_id) {
+      // Retrieve the actual coordinates. This is the second half of the
+      // Search Box session — sharing the session_token = 1 billable session.
+      try {
+        const url =
+          `https://api.mapbox.com/search/searchbox/v1/retrieve/${encodeURIComponent(s.mapbox_id)}` +
+          `?session_token=${sessionRef.current}` +
+          `&access_token=${MAPBOX_TOKEN}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`retrieve ${res.status}`);
+        const json = (await res.json()) as {
+          features?: Array<{
+            geometry: { coordinates: [number, number] };
+            properties: {
+              full_address?: string;
+              name?: string;
+              context?: Record<string, { name?: string }>;
+            };
+          }>;
+        };
+        const f = json.features?.[0];
+        if (!f) throw new Error('no feature');
+        const lon = f.geometry.coordinates[0];
+        const lat = f.geometry.coordinates[1];
+        const zcta = f.properties.context?.postcode?.name;
+        const name = f.properties.full_address ?? s.place_name;
+        onChange(name);
+        onPick({ name, lon, lat, zcta });
+      } catch {
+        // Retrieve failed — fall back to passing the place_name through and
+        // letting /api/route geocode it server-side. Better than blocking.
+        // No coordinate set → the page's onChange-without-onPick path
+        // forwards the string to /api/route which geocodes via v5.
+      } finally {
+        sessionRef.current = newSessionToken();
+      }
+    }
   }
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {

@@ -24,6 +24,7 @@ import {
 } from '@/lib/mapbox';
 import type { DemoRoutesPayload } from '@/lib/routesData';
 import { HeatmapLayer } from './HeatmapLayer';
+import { PollutionSourceLayer } from './PollutionSourceLayer';
 import { formatDistance, formatWalkTime, estimateSteps } from '@/lib/healthMath';
 import type { RouteOptions } from '@/lib/recommendation';
 import {
@@ -46,6 +47,10 @@ interface Props {
   exposure?: RouteOptions | null;
   /** Render the AQI heatmap behind buildings. Off by default. */
   showHeatmap?: boolean;
+  /** Render the hand-curated pollution-source halos (bus depots, highway hot
+   *  spots, industrial zones). On by default when results are visible — they
+   *  explain WHY the heatmap looks like it does and why the route bends. */
+  showPollutionSources?: boolean;
   /** Fired on long-press / right-click on an empty map area. Mobile browsers
    *  emit contextmenu after ~500ms touch hold; desktop testers use right-click.
    *  Used by the page to drop a destination pin and infer the origin from
@@ -70,7 +75,13 @@ const LIGHT_ICONS: Record<LightPreset, React.ComponentType<{ size?: number }>> =
 type RouteKind = 'standard' | 'atlas';
 const ROUTE_LAYER_IDS = ['route-standard-line', 'route-atlas-line'];
 
-export function MapView({ routes = null, exposure = null, showHeatmap = false, onLongPress }: Props) {
+export function MapView({
+  routes = null,
+  exposure = null,
+  showHeatmap = false,
+  showPollutionSources = false,
+  onLongPress,
+}: Props) {
   const mapRef = useRef<MapRef | null>(null);
   const [styleReady, setStyleReady] = useState(false);
   const [lightPreset, setLightPreset] = useState<LightPreset>(DEFAULT_LIGHT_PRESET);
@@ -209,6 +220,7 @@ export function MapView({ routes = null, exposure = null, showHeatmap = false, o
         <NavigationControl position="top-right" showCompass={false} />
 
         {showHeatmap && styleReady && <HeatmapLayer />}
+        {showPollutionSources && styleReady && <PollutionSourceLayer showLabels={false} />}
 
         {standardGeoJson && styleReady && (
           <Source id="route-standard" type="geojson" data={standardGeoJson}>

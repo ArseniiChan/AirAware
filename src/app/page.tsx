@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { TimeScrubber, type TimeSlice } from '@/components/TimeScrubber';
 import { OnboardingStep } from '@/components/OnboardingStep';
 import { ComputingScreen } from '@/components/ComputingScreen';
 import { LandingPage } from '@/components/LandingPage';
-import { MapView } from '@/components/MapView';
 import { AddressAutocomplete, type AddressPick } from '@/components/AddressAutocomplete';
 import { RouteSummaryCards } from '@/components/RouteSummaryCards';
 import { HERO_ROUTES_BY_TIME } from '@/lib/demoData';
@@ -14,6 +14,19 @@ import { loadDemoRoutes, type DemoRoutesPayload } from '@/lib/routesData';
 import { loadForecast, scaleRoutesByForecast, type AqiForecast } from '@/lib/forecastScaling';
 import { reverseGeocode, locateMe, GeolocateError } from '@/lib/geolocate';
 import type { RouteOptions } from '@/lib/recommendation';
+
+// Lazy-load MapView. mapbox-gl + react-map-gl are ~700KB combined; the
+// landing page never needs them. ssr:false because mapbox-gl touches `window`.
+// Biggest single perf win — strips the largest dependency from the initial
+// bundle and lets the landing page paint in <1s.
+const MapView = dynamic(() => import('@/components/MapView').then((m) => m.MapView), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-emerald-50/40 text-xs text-slate-500">
+      Loading map…
+    </div>
+  ),
+});
 
 type Step = 'landing' | 'from' | 'to' | 'computing' | 'results';
 
@@ -67,15 +80,17 @@ export default function HomePage() {
     return liveBase;
   }, [step, isHero, timeSlice, liveBase, forecast]);
 
-  // Load the forecast once on mount so the scrubber is responsive
-  // immediately when the user reaches results.
+  // Load the forecast once the user leaves the landing screen. Deferring
+  // until "from" keeps the landing-page LCP fast — the forecast file isn't
+  // needed until the scrubber renders on the results screen.
   useEffect(() => {
+    if (step === 'landing' || forecast) return;
     let cancelled = false;
     loadForecast()
       .then((f) => { if (!cancelled) setForecast(f); })
       .catch((err) => { console.error('forecast load failed', err); });
     return () => { cancelled = true; };
-  }, []);
+  }, [step, forecast]);
 
   // On entering results, fetch route geometry. Hero pair → static fixture,
   // anything else → /api/route. Captures live exposure into `liveBase` so
@@ -382,6 +397,7 @@ export default function HomePage() {
             routes={geoRoutes}
             exposure={routes}
             showHeatmap
+            showPollutionSources
             onLongPress={handleMapLongPress}
           />
         </section>
