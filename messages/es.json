@@ -45,5 +45,23 @@
     "advice": "Enciendan el filtro de aire. Mantengan las ventanas cerradas."
   },
   "languageToggle": "Idioma",
-  "outsideNyc": "Actualmente cubrimos los 5 distritos de NYC. Prueba una de estas caminatas del Bronx:"
+  "outsideNyc": "Actualmente cubrimos los 5 distritos de NYC. Prueba una de estas caminatas del Bronx:",
+  "landing": {
+    "eyebrow": "Navegación con conciencia del asma",
+    "place": "Ciudad de Nueva York · 5 distritos",
+    "headlineLead": "La misma caminata.",
+    "headlineMid": "Dos niños.",
+    "headlineEnd": "Respuestas distintas.",
+    "lede": "Como una app de mapas, pero sabe del aire, de la cuadra y del niño. Hecho para padres que caminan el Bronx cada mañana.",
+    "cta": "Empezar",
+    "ctaHint": "Sin cuenta. Dos direcciones. Hecho para el Bronx, sirve en todo NYC.",
+    "feature1Title": "Rutas más limpias",
+    "feature1Body": "Calificamos cada alternativa según la contaminación en el camino y escogemos la que respira mejor.",
+    "feature2Title": "Guía por niño",
+    "feature2Body": "Maya camina hoy. Diego se queda en casa. Los umbrales son personales, no de un panel público.",
+    "feature3Title": "Atenta al pronóstico",
+    "feature3Body": "¿Mal aire ahora? Adelanta el tiempo: te decimos cuándo se calma el depósito de autobuses.",
+    "footnoteData": "Datos: EPA AirNow, Open-Meteo, NYC DOHMH (visitas a urgencias por asma, por ZCTA).",
+    "footnoteCoords": "40,84°N · 73,91°O"
+  }
 }

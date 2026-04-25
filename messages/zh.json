@@ -45,5 +45,23 @@
     "advice": "开启空气过滤器。关好窗户。"
   },
   "languageToggle": "语言",
-  "outsideNyc": "我们目前覆盖纽约市五个区。请尝试以下布朗克斯的步行路线："
+  "outsideNyc": "我们目前覆盖纽约市五个区。请尝试以下布朗克斯的步行路线：",
+  "landing": {
+    "eyebrow": "懂哮喘的导航",
+    "place": "纽约市 · 五个区",
+    "headlineLead": "同一条路。",
+    "headlineMid": "两个孩子。",
+    "headlineEnd": "不同的答案。",
+    "lede": "像地图应用,但它了解空气、街区和您的孩子。专为每天清晨在布朗克斯走路的家长打造。",
+    "cta": "开始",
+    "ctaHint": "无需注册。输入两个地址即可。专为布朗克斯设计,适用于整个纽约市。",
+    "feature1Title": "更干净的路线",
+    "feature1Body": "我们根据沿途的污染评估每条备选路线,选出最易呼吸的那一条。",
+    "feature2Title": "因人而异的建议",
+    "feature2Body": "今天 Maya 可以走,Diego 留在家里。这些阈值是个人的,不是公共仪表板。",
+    "feature3Title": "结合预报",
+    "feature3Body": "现在空气不好?向后拖动时间——我们会告诉您公交车场什么时候安静下来。",
+    "footnoteData": "数据来源:EPA AirNow、Open-Meteo、NYC DOHMH(按 ZCTA 划分的儿童哮喘急诊就诊)。",
+    "footnoteCoords": "北纬 40.84° · 西经 73.91°"
+  }
 }
